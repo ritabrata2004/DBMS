@@ -55,10 +55,12 @@ function ProtectedRoute({ children }) {
                     flexDirection: 'column', 
                     alignItems: 'center', 
                     justifyContent: 'center',
-                    height: '100vh'
+                    height: '100vh',
+                    bgcolor: 'background.default',
+                    color: 'text.primary'
                 }}
             >
-                <CircularProgress size={60} />
+                <CircularProgress size={60} color="primary" />
                 <Typography variant="h6" sx={{ mt: 2 }}>
                     Authenticating...
                 </Typography>

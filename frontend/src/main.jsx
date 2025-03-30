@@ -5,17 +5,23 @@ import { ThemeProvider, createTheme } from '@mui/material/styles'
 import CssBaseline from '@mui/material/CssBaseline'
 import './styles/index.css'
 
-// Create a theme instance
+// Create a theme instance with dark mode
 const theme = createTheme({
   palette: {
+    mode: 'dark',
     primary: {
-      main: '#1976d2',
+      main: '#90caf9',
     },
     secondary: {
-      main: '#dc004e',
+      main: '#f48fb1',
     },
     background: {
-      default: '#f5f5f5',
+      default: '#121212',
+      paper: '#1e1e1e',
+    },
+    text: {
+      primary: '#ffffff',
+      secondary: '#b0b0b0',
     },
   },
   typography: {

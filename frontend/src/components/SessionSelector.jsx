@@ -14,7 +14,8 @@ import {
   DialogActions, 
   TextField,
   Divider,
-  Tooltip
+  Tooltip,
+  Fab
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -22,7 +23,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import api from '../api';
 import LoadingIndicator from './LoadingIndicator';
 
-function SessionSelector({ currentSessionId, onSessionSelect }) {
+function SessionSelector({ currentSessionId, onSessionSelect, fullHeight = false }) {
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -63,7 +64,7 @@ function SessionSelector({ currentSessionId, onSessionSelect }) {
     if (!editingSession) return;
     
     try {
-      const response = await api.updateSessionTitle(editingSession.id, newSessionTitle);
+      await api.updateSessionTitle(editingSession.id, newSessionTitle);
       setSessions(sessions.map(s => 
         s.id === editingSession.id ? { ...s, title: newSessionTitle } : s
       ));
@@ -105,64 +106,157 @@ function SessionSelector({ currentSessionId, onSessionSelect }) {
     return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
   };
 
-  if (loading) return <LoadingIndicator />;
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: fullHeight ? '100%' : 'auto', py: 4 }}>
+        <LoadingIndicator />
+      </Box>
+    );
+  }
 
   return (
-    <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-        <Typography variant="h6">Your Sessions</Typography>
+    <Box 
+      sx={{ 
+        color: 'text.primary',
+        display: 'flex',
+        flexDirection: 'column',
+        height: fullHeight ? '100%' : 'auto'
+      }}
+    >
+      <Box sx={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center', 
+        mb: 2,
+        position: 'relative'
+      }}>
+        <Typography variant="h6" sx={{ fontSize: '1.1rem', fontWeight: 500 }}>Your Sessions</Typography>
         <Button 
           startIcon={<AddIcon />} 
           variant="contained" 
           size="small"
           onClick={() => setCreateDialogOpen(true)}
+          sx={{
+            borderRadius: 8,
+            textTransform: 'none',
+            fontSize: '0.8rem',
+            py: 0.5,
+            px: 1.5
+          }}
         >
           New Session
         </Button>
       </Box>
       
       {sessions.length === 0 ? (
-        <Typography variant="body2" sx={{ fontStyle: 'italic', textAlign: 'center', py: 2 }}>
-          No sessions yet. Create your first session to get started!
-        </Typography>
+        <Box 
+          sx={{ 
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            height: fullHeight ? '100%' : '200px',
+            borderRadius: 1,
+            bgcolor: 'background.default',
+            p: 2
+          }}
+        >
+          <Typography variant="body2" sx={{ fontStyle: 'italic', textAlign: 'center', color: 'text.secondary' }}>
+            No sessions yet. Create your first session to get started!
+          </Typography>
+          <Fab 
+            color="primary" 
+            size="medium" 
+            onClick={() => setCreateDialogOpen(true)}
+            sx={{ mt: 2 }}
+          >
+            <AddIcon />
+          </Fab>
+        </Box>
       ) : (
-        <List dense sx={{ maxHeight: 300, overflow: 'auto', bgcolor: 'background.paper' }}>
+        <List 
+          dense 
+          disablePadding 
+          sx={{ 
+            flexGrow: 1,
+            overflow: 'auto',
+            bgcolor: 'background.default',
+            borderRadius: 1,
+            '& .MuiListItemButton-root': {
+              borderLeft: '3px solid transparent',
+              py: 1.2,
+              transition: 'all 0.2s ease'
+            },
+            '& .MuiListItemButton-root:hover': {
+              bgcolor: 'rgba(144, 202, 249, 0.08)'
+            },
+            '& .MuiListItemButton-root.Mui-selected': {
+              bgcolor: 'rgba(144, 202, 249, 0.12)',
+              borderLeft: '3px solid',
+              borderLeftColor: 'primary.main'
+            }
+          }}
+        >
           {sessions.map((session) => (
             <ListItem
               key={session.id}
+              disablePadding
               secondaryAction={
-                <Box>
+                <Box sx={{ display: 'flex', opacity: 0.6, transition: 'opacity 0.2s ease', '&:hover': { opacity: 1 } }}>
                   <Tooltip title="Edit session title">
-                    <IconButton edge="end" onClick={() => openEditDialog(session)} size="small">
+                    <IconButton edge="end" onClick={() => openEditDialog(session)} size="small" sx={{ color: 'text.secondary', mx: 0.5 }}>
                       <EditIcon fontSize="small" />
                     </IconButton>
                   </Tooltip>
                   <Tooltip title="Delete session">
-                    <IconButton edge="end" onClick={() => handleDeleteSession(session.id)} size="small">
+                    <IconButton edge="end" onClick={() => handleDeleteSession(session.id)} size="small" sx={{ color: 'text.secondary', mx: 0.5 }}>
                       <DeleteIcon fontSize="small" />
                     </IconButton>
                   </Tooltip>
                 </Box>
               }
-              disablePadding
             >
               <ListItemButton 
                 selected={session.id === currentSessionId}
                 onClick={() => onSessionSelect(session.id)}
                 dense
+                sx={{
+                  px: 2
+                }}
               >
                 <ListItemText 
                   primary={session.title} 
                   secondary={
                     <React.Fragment>
-                      <Typography variant="caption" component="span">
+                      <Typography variant="caption" component="span" sx={{ color: 'text.secondary' }}>
                         {formatDate(session.updated_at)}
                       </Typography>
-                      <Typography variant="caption" component="span" sx={{ ml: 1 }}>
+                      <Typography 
+                        variant="caption" 
+                        component="span" 
+                        sx={{ 
+                          ml: 1, 
+                          color: 'text.secondary',
+                          border: '1px solid',
+                          borderColor: 'divider',
+                          px: 0.8,
+                          py: 0.2,
+                          borderRadius: 4,
+                          fontSize: '0.65rem'
+                        }}
+                      >
                         {session.query_count} {session.query_count === 1 ? 'query' : 'queries'}
                       </Typography>
                     </React.Fragment>
                   }
+                  primaryTypographyProps={{ 
+                    color: 'text.primary',
+                    fontWeight: session.id === currentSessionId ? 500 : 400,
+                    fontSize: '0.95rem'
+                  }}
+                  secondaryTypographyProps={{ 
+                    fontSize: '0.75rem'
+                  }}
                 />
               </ListItemButton>
             </ListItem>
@@ -171,13 +265,27 @@ function SessionSelector({ currentSessionId, onSessionSelect }) {
       )}
 
       {/* Create Session Dialog */}
-      <Dialog open={createDialogOpen} onClose={() => setCreateDialogOpen(false)}>
-        <DialogTitle>Create New Session</DialogTitle>
-        <DialogContent>
+      <Dialog 
+        open={createDialogOpen} 
+        onClose={() => setCreateDialogOpen(false)}
+        PaperProps={{
+          sx: {
+            bgcolor: 'background.paper',
+            color: 'text.primary',
+            borderRadius: 2,
+            overflow: 'hidden'
+          }
+        }}
+        fullWidth
+        maxWidth="xs"
+      >
+        <DialogTitle sx={{ pb: 1, borderBottom: '1px solid', borderColor: 'divider' }}>
+          Create New Session
+        </DialogTitle>
+        <DialogContent sx={{ mt: 2 }}>
           <TextField
             autoFocus
             margin="dense"
-            id="name"
             label="Session Title"
             type="text"
             fullWidth
@@ -187,20 +295,45 @@ function SessionSelector({ currentSessionId, onSessionSelect }) {
             placeholder="New Session"
           />
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setCreateDialogOpen(false)}>Cancel</Button>
-          <Button onClick={handleCreateSession} variant="contained">Create</Button>
+        <DialogActions sx={{ px: 3, py: 2 }}>
+          <Button 
+            onClick={() => setCreateDialogOpen(false)} 
+            variant="text"
+            sx={{ color: 'text.secondary' }}
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleCreateSession} 
+            variant="contained"
+            sx={{ borderRadius: 8, px: 3 }}
+          >
+            Create
+          </Button>
         </DialogActions>
       </Dialog>
 
       {/* Edit Session Dialog */}
-      <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)}>
-        <DialogTitle>Edit Session Title</DialogTitle>
-        <DialogContent>
+      <Dialog 
+        open={editDialogOpen} 
+        onClose={() => setEditDialogOpen(false)}
+        PaperProps={{
+          sx: {
+            bgcolor: 'background.paper',
+            color: 'text.primary',
+            borderRadius: 2
+          }
+        }}
+        fullWidth
+        maxWidth="xs"
+      >
+        <DialogTitle sx={{ pb: 1, borderBottom: '1px solid', borderColor: 'divider' }}>
+          Edit Session Title
+        </DialogTitle>
+        <DialogContent sx={{ mt: 2 }}>
           <TextField
             autoFocus
             margin="dense"
-            id="name"
             label="Session Title"
             type="text"
             fullWidth
@@ -209,9 +342,21 @@ function SessionSelector({ currentSessionId, onSessionSelect }) {
             onChange={(e) => setNewSessionTitle(e.target.value)}
           />
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setEditDialogOpen(false)}>Cancel</Button>
-          <Button onClick={handleUpdateSession} variant="contained">Update</Button>
+        <DialogActions sx={{ px: 3, py: 2 }}>
+          <Button 
+            onClick={() => setEditDialogOpen(false)}
+            variant="text"
+            sx={{ color: 'text.secondary' }}
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleUpdateSession} 
+            variant="contained"
+            sx={{ borderRadius: 8, px: 3 }}
+          >
+            Update
+          </Button>
         </DialogActions>
       </Dialog>
     </Box>
