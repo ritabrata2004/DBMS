@@ -20,4 +20,13 @@ api.interceptors.request.use(
   }
 );
 
+// Session management functions
+api.getSessions = () => api.get("/api/sessions/");
+api.createSession = (title) => api.post("/api/sessions/", { title });
+api.getSession = (sessionId) => api.get(`/api/sessions/${sessionId}/`);
+api.updateSessionTitle = (sessionId, title) => api.patch(`/api/sessions/${sessionId}/`, { title });
+api.deleteSession = (sessionId) => api.delete(`/api/sessions/${sessionId}/`);
+api.addQueryToSession = (sessionId, prompt, response) => 
+  api.post(`/api/sessions/${sessionId}/queries/`, { prompt, response });
+
 export default api;
