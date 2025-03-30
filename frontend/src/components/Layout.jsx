@@ -19,8 +19,14 @@ const Layout = ({ children }) => {
     };
     
     return (
-        <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-            <AppBar position="static">
+        <Box sx={{ 
+            display: 'flex', 
+            flexDirection: 'column', 
+            minHeight: '100vh', 
+            bgcolor: 'background.default',
+            color: 'text.primary'
+        }}>
+            <AppBar position="static" elevation={0} color="primary">
                 <Toolbar>
                     <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
                         LLM Query System

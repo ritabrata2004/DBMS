@@ -48,67 +48,93 @@ function Form({ route, method }) {
     };
 
     return (
-        <Container maxWidth="xs" className="mt-16">
-            <Paper elevation={3} className="p-6">
-                <Box className="flex flex-col items-center">
-                    <Avatar className="bg-primary mb-2">
-                        {icon}
-                    </Avatar>
-                    <Typography variant="h5" className="mb-4">
-                        {name}
-                    </Typography>
+        <Container maxWidth="xs" sx={{ mt: 8 }}>
+            <Paper 
+                elevation={3} 
+                sx={{ 
+                    p: 4, 
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    bgcolor: 'background.paper',
+                    borderRadius: 2,
+                    border: '1px solid',
+                    borderColor: 'divider'
+                }}
+            >
+                <Avatar sx={{ m: 1, bgcolor: 'primary.main' }}>
+                    {icon}
+                </Avatar>
+                <Typography component="h1" variant="h5" sx={{ mb: 3, color: 'text.primary' }}>
+                    {name}
+                </Typography>
+                
+                <form onSubmit={handleSubmit} style={{ width: '100%' }}>
+                    <TextField
+                        margin="normal"
+                        required
+                        fullWidth
+                        id="username"
+                        label="Username"
+                        name="username"
+                        autoComplete="username"
+                        autoFocus
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)}
+                        sx={{
+                            '& label': { color: 'text.secondary' },
+                            '& .MuiOutlinedInput-root': {
+                                '& fieldset': { borderColor: 'rgba(255, 255, 255, 0.23)' },
+                                '&:hover fieldset': { borderColor: 'rgba(255, 255, 255, 0.5)' },
+                                '&.Mui-focused fieldset': { borderColor: 'primary.main' },
+                            }
+                        }}
+                    />
+                    <TextField
+                        margin="normal"
+                        required
+                        fullWidth
+                        name="password"
+                        label="Password"
+                        type="password"
+                        id="password"
+                        autoComplete="current-password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        sx={{
+                            '& label': { color: 'text.secondary' },
+                            '& .MuiOutlinedInput-root': {
+                                '& fieldset': { borderColor: 'rgba(255, 255, 255, 0.23)' },
+                                '&:hover fieldset': { borderColor: 'rgba(255, 255, 255, 0.5)' },
+                                '&.Mui-focused fieldset': { borderColor: 'primary.main' },
+                            }
+                        }}
+                    />
                     
-                    <form onSubmit={handleSubmit} className="w-full">
-                        <TextField
-                            margin="normal"
-                            required
-                            fullWidth
-                            id="username"
-                            label="Username"
-                            name="username"
-                            autoComplete="username"
-                            autoFocus
-                            value={username}
-                            onChange={(e) => setUsername(e.target.value)}
-                        />
-                        <TextField
-                            margin="normal"
-                            required
-                            fullWidth
-                            name="password"
-                            label="Password"
-                            type="password"
-                            id="password"
-                            autoComplete="current-password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                        />
-                        
-                        <Button
-                            type="submit"
-                            fullWidth
-                            variant="contained"
-                            className="mt-4 mb-2"
-                            disabled={loading}
-                        >
-                            {name}
-                        </Button>
-                        
-                        {loading && <LoadingIndicator />}
-                        
-                        <Box className="flex justify-center mt-3">
-                            {isLogin ? (
-                                <Link component={RouterLink} to="/register" variant="body2">
-                                    {"Don't have an account? Sign Up"}
-                                </Link>
-                            ) : (
-                                <Link component={RouterLink} to="/login" variant="body2">
-                                    {"Already have an account? Sign In"}
-                                </Link>
-                            )}
-                        </Box>
-                    </form>
-                </Box>
+                    <Button
+                        type="submit"
+                        fullWidth
+                        variant="contained"
+                        sx={{ mt: 3, mb: 2, py: 1.5 }}
+                        disabled={loading}
+                    >
+                        {name}
+                    </Button>
+                    
+                    {loading && <LoadingIndicator />}
+                    
+                    <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
+                        {isLogin ? (
+                            <Link component={RouterLink} to="/register" variant="body2" sx={{ color: 'primary.main' }}>
+                                {"Don't have an account? Sign Up"}
+                            </Link>
+                        ) : (
+                            <Link component={RouterLink} to="/login" variant="body2" sx={{ color: 'primary.main' }}>
+                                {"Already have an account? Sign In"}
+                            </Link>
+                        )}
+                    </Box>
+                </form>
             </Paper>
         </Container>
     );
