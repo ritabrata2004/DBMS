@@ -20,13 +20,13 @@
 
 /* Styles for the form section */
 form {
-  background-color: #1e1e1e;
-  padding: 20px;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-  max-width: 500px;
-  margin: auto;
-  border: 1px solid #333;
+  background-color: transparent;
+  padding: 0;
+  border-radius: 0;
+  box-shadow: none;
+  margin: 0;
+  width: 100%;
+  border: none;
 }
 
 form h2 {
@@ -73,6 +73,7 @@ form input[type="submit"]:hover {
   flex-direction: column;
   height: calc(100vh - 64px - 40px);
   background-color: #121212;
+  width: 100%;
 }
 
 .messages-container {
@@ -81,12 +82,14 @@ form input[type="submit"]:hover {
   padding: 20px;
   display: flex;
   flex-direction: column;
+  width: 100%;
 }
 
 .query-input-container {
   padding: 16px;
   background-color: #1e1e1e;
   border-top: 1px solid #333;
+  width: 100%;
 }
 
 .message {

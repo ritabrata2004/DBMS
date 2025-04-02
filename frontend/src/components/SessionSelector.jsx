@@ -156,7 +156,7 @@ function SessionSelector({ currentSessionId, onSessionSelect, fullHeight = false
             alignItems: 'center',
             justifyContent: 'center',
             height: fullHeight ? '100%' : '200px',
-            borderRadius: 1,
+            borderRadius: 2, // Rounded corners for empty state box
             bgcolor: 'background.default',
             p: 2
           }}
@@ -181,11 +181,13 @@ function SessionSelector({ currentSessionId, onSessionSelect, fullHeight = false
             flexGrow: 1,
             overflow: 'auto',
             bgcolor: 'background.default',
-            borderRadius: 1,
+            borderRadius: 2, // Rounded corners for the list container
             '& .MuiListItemButton-root': {
               borderLeft: '3px solid transparent',
               py: 1.2,
-              transition: 'all 0.2s ease'
+              transition: 'all 0.2s ease',
+              borderRadius: '12px', // Rounded corners for list items
+              my: 0.5 // Add some vertical spacing between items
             },
             '& .MuiListItemButton-root:hover': {
               bgcolor: 'rgba(144, 202, 249, 0.08)'
@@ -202,7 +204,13 @@ function SessionSelector({ currentSessionId, onSessionSelect, fullHeight = false
               key={session.id}
               disablePadding
               secondaryAction={
-                <Box sx={{ display: 'flex', opacity: 0.6, transition: 'opacity 0.2s ease', '&:hover': { opacity: 1 } }}>
+                <Box sx={{ 
+                  display: 'flex', 
+                  opacity: 0.6, 
+                  transition: 'opacity 0.2s ease', 
+                  '&:hover': { opacity: 1 },
+                  mr: 1 // Add right margin for better spacing
+                }}>
                   <Tooltip title="Edit session title">
                     <IconButton edge="end" onClick={() => openEditDialog(session)} size="small" sx={{ color: 'text.secondary', mx: 0.5 }}>
                       <EditIcon fontSize="small" />
