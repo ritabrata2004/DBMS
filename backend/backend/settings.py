@@ -60,6 +60,8 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "api",
+    "session",  # Added session app
+    "user",     # Added user app
     "rest_framework",
     "corsheaders",
 ]

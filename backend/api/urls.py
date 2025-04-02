@@ -1,9 +1,6 @@
 from django.urls import path
-from . import views
 
+# This file is now used for any general API endpoints that don't belong to a specific app
 urlpatterns = [
-    # Session management endpoints
-    path('sessions/', views.SessionListCreateView.as_view(), name='session-list-create'),
-    path('sessions/<int:pk>/', views.SessionDetailView.as_view(), name='session-detail'),
-    path('sessions/<int:session_id>/queries/', views.QueryCreateView.as_view(), name='query-create'),
+    # API endpoints not specific to other apps can be added here
 ]
