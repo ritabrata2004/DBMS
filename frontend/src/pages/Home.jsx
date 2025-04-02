@@ -13,7 +13,8 @@ import {
   Drawer,
   Chip,
   useMediaQuery,
-  useTheme
+  useTheme,
+  InputAdornment
 } from "@mui/material";
 import SendIcon from '@mui/icons-material/Send';
 import LogoutIcon from '@mui/icons-material/Logout';
@@ -147,19 +148,23 @@ function Home() {
     }
 
     return (
-        <Box sx={{ display: 'flex', height: '100vh', overflow: 'hidden', bgcolor: 'background.default' }}>
-            {/* Fixed Sidebar for Desktop */}
+        <Box sx={{ display: 'flex', height: '100vh', bgcolor: 'background.default' }}>
+            {/* Sidebar - For desktop */}
             {!isMobile && (
                 <Box
                     sx={{
                         width: sidebarWidth,
-                        flexShrink: 0,
+                        height: '100%',
+                        position: 'fixed',
+                        left: 0,
+                        top: 0,
+                        bottom: 0,
+                        bgcolor: 'background.paper',
                         borderRight: '1px solid',
                         borderColor: 'divider',
-                        bgcolor: 'background.paper',
-                        height: '100%',
                         display: 'flex',
-                        flexDirection: 'column'
+                        flexDirection: 'column',
+                        zIndex: 100
                     }}
                 >
                     <Box sx={{ p: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
@@ -191,26 +196,28 @@ function Home() {
                 </Box>
             )}
 
-            {/* Main content */}
-            <Box sx={{ 
-                flexGrow: 1, 
-                display: 'flex', 
-                flexDirection: 'column',
-                height: '100vh',
-                overflow: 'hidden',
-                ml: isMobile ? 0 : `${sidebarWidth}px`,
-                width: isMobile ? '100%' : `calc(100% - ${sidebarWidth}px)`,
-            }}>
-                {/* Mobile App Bar */}
+            {/* Main content area */}
+            <Box 
+                sx={{ 
+                    flexGrow: 1, 
+                    marginLeft: isMobile ? 0 : `${sidebarWidth}px`,
+                    width: isMobile ? '100%' : `calc(100% - ${sidebarWidth}px)`,
+                    height: '100vh',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    position: 'relative',
+                    overflow: 'hidden'
+                }}
+            >
+                {/* Mobile header */}
                 {isMobile && (
-                    <AppBar position="static" elevation={0} sx={{ zIndex: (theme) => theme.zIndex.drawer + 1 }}>
+                    <AppBar position="static" elevation={0} sx={{ zIndex: 1000 }}>
                         <Toolbar>
                             <IconButton
-                                size="large"
-                                edge="start"
                                 color="inherit"
-                                sx={{ mr: 2 }}
+                                edge="start"
                                 onClick={() => setDrawerOpen(true)}
+                                sx={{ mr: 2 }}
                             >
                                 <MenuIcon />
                             </IconButton>
@@ -225,11 +232,7 @@ function Home() {
                                     />
                                 )}
                             </Typography>
-                            <IconButton 
-                                color="inherit" 
-                                onClick={() => navigate('/logout')}
-                                aria-label="logout"
-                            >
+                            <IconButton color="inherit" onClick={() => navigate('/logout')}>
                                 <LogoutIcon />
                             </IconButton>
                         </Toolbar>
@@ -244,9 +247,9 @@ function Home() {
                         onClose={() => setDrawerOpen(false)}
                         sx={{
                             '& .MuiDrawer-paper': { 
+                                width: sidebarWidth,
                                 bgcolor: 'background.paper',
-                                color: 'text.primary',
-                                width: sidebarWidth
+                                color: 'text.primary'
                             },
                         }}
                     >
@@ -267,187 +270,191 @@ function Home() {
                     </Drawer>
                 )}
                 
-                {/* Chat interface */}
-                <Box sx={{ 
-                    display: 'flex', 
-                    flexDirection: 'column',
-                    flexGrow: 1,
-                    height: isMobile ? 'calc(100vh - 64px)' : '100vh',
-                    position: 'relative',
-                    overflow: 'hidden'
-                }}>
-                    {/* Messages Area */}
-                    <Box sx={{ 
+                {/* Messages area */}
+                <Box 
+                    sx={{ 
                         flexGrow: 1, 
                         overflowY: 'auto', 
-                        p: 4,
-                        pb: 20, // Extra padding at the bottom to ensure content is visible above the input
-                        display: 'flex', 
-                        flexDirection: 'column'
-                    }}>
-                        {!currentSession?.queries || currentSession.queries.length === 0 ? (
-                            <Box 
-                                sx={{
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    alignItems: 'center', 
-                                    justifyContent: 'center', 
-                                    height: '100%',
-                                    opacity: 0.7
-                                }}
-                            >
-                                <Typography variant="h5" sx={{ color: 'text.secondary', fontWeight: 300 }}>
-                                    No messages yet
-                                </Typography>
-                                <Typography variant="body2" sx={{ color: 'text.secondary', mt: 1 }}>
-                                    Start a conversation by typing a message below
-                                </Typography>
-                            </Box>
-                        ) : (
-                            currentSession.queries.map((item, index) => (
-                                <Box key={index} sx={{ mb: 3, display: 'flex', justifyContent: 'center', width: '100%' }}>
-                                    <Box sx={{ width: '65%', maxWidth: '700px' }}>
-                                        {/* User message */}
-                                        <Paper 
-                                            elevation={0}
-                                            sx={{
-                                                p: 2,
-                                                mb: 1.5,
-                                                color: 'white',
-                                                bgcolor: 'primary.dark',
-                                                borderRadius: '18px 18px 4px 18px',
-                                                maxWidth: '70%',
-                                                ml: 'auto',
-                                                boxShadow: '0 1px 2px rgba(0,0,0,0.2)'
-                                            }}
-                                        >
-                                            <Typography variant="body1">{item.prompt}</Typography>
-                                        </Paper>
-                                        
-                                        {/* System response */}
-                                        <Paper 
-                                            elevation={0}
-                                            sx={{
-                                                p: 2,
-                                                color: 'text.primary',
-                                                bgcolor: 'background.paper',
-                                                borderRadius: '18px 18px 18px 4px',
-                                                maxWidth: '75%',
-                                                mr: 'auto',
-                                                border: '1px solid',
-                                                borderColor: 'divider',
-                                                wordWrap: 'break-word',
-                                                boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
-                                            }}
-                                        >
-                                            <Typography 
-                                                variant="body1" 
-                                                sx={{ whiteSpace: 'pre-wrap' }}
-                                            >
-                                                {item.response}
-                                            </Typography>
-                                            <Typography 
-                                                variant="caption" 
-                                                sx={{ 
-                                                    display: 'block', 
-                                                    mt: 1, 
-                                                    textAlign: 'right',
-                                                    color: 'text.secondary' 
-                                                }}
-                                            >
-                                                {new Date(item.created_at).toLocaleString()}
-                                            </Typography>
-                                        </Paper>
-                                    </Box>
-                                </Box>
-                            ))
-                        )}
-                        <div ref={messagesEndRef} />
-                    </Box>
-                    
-                    {/* Query Input Area - No footer background, just the input */}
-                    <Box 
-                        sx={{ 
-                            position: 'absolute',
-                            bottom: 0,
-                            left: 0,
-                            right: 0,
-                            p: 3,
-                            zIndex: 10,
-                            width: '100%',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        width: '100%',
+                        pb: '90px', // Space for the input box
+                        px: { xs: 2, md: 4 }
+                    }}
+                >
+                    {!currentSession?.queries || currentSession.queries.length === 0 ? (
+                        <Box sx={{
                             display: 'flex',
-                            justifyContent: 'center'
-                        }}
-                    >
-                        <form onSubmit={handleSubmit} style={{ width: '100%', margin: 0, padding: 0, boxShadow: 'none', background: 'transparent', display: 'flex', justifyContent: 'center' }}>
-                            <Box sx={{ 
-                                display: 'flex', 
-                                gap: 1.5, 
-                                width: '95%', 
-                                maxWidth: '1200px',
-                                position: 'relative'
-                            }}>
-                                <TextField
-                                    fullWidth
-                                    placeholder="Type your message here..."
-                                    variant="outlined"
-                                    value={query}
-                                    onChange={(e) => setQuery(e.target.value)}
-                                    multiline
-                                    minRows={1}
-                                    maxRows={4}
-                                    sx={{
-                                        '& .MuiOutlinedInput-root': {
-                                            borderRadius: '28px',
-                                            bgcolor: 'rgba(30, 30, 30, 0.9)',
-                                            backdropFilter: 'blur(10px)',
-                                            pr: 7, // Space for button
-                                            boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-                                            '&:hover .MuiOutlinedInput-notchedOutline': {
-                                                borderColor: 'primary.main',
-                                                borderWidth: '1px',
-                                            },
-                                        },
-                                        '& .MuiOutlinedInput-notchedOutline': {
-                                            borderColor: 'rgba(255,255,255,0.1)',
-                                        }
-                                    }}
-                                    InputProps={{
-                                        endAdornment: (
-                                            <Button 
-                                                type="submit"
-                                                variant="contained" 
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            height: '100%',
+                            opacity: 0.7
+                        }}>
+                            <Typography variant="h5" sx={{ color: 'text.secondary', fontWeight: 300 }}>
+                                No messages yet
+                            </Typography>
+                            <Typography variant="body2" sx={{ color: 'text.secondary', mt: 1 }}>
+                                Start a conversation by typing a message below
+                            </Typography>
+                        </Box>
+                    ) : (
+                        currentSession.queries.map((item, index) => (
+                            <Box key={index} sx={{ width: '100%', my: 2 }}>
+                                {/* User message */}
+                                <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1 }}>
+                                    <Paper 
+                                        elevation={0}
+                                        sx={{
+                                            p: 2,
+                                            color: 'white',
+                                            bgcolor: 'primary.dark',
+                                            borderRadius: '16px 16px 4px 16px',
+                                            maxWidth: { xs: '80%', md: '70%' },
+                                            boxShadow: '0 1px 2px rgba(0,0,0,0.2)'
+                                        }}
+                                    >
+                                        <Typography variant="body1">{item.prompt}</Typography>
+                                    </Paper>
+                                </Box>
+                                
+                                {/* System message */}
+                                <Box sx={{ display: 'flex', justifyContent: 'flex-start' }}>
+                                    <Paper 
+                                        elevation={0}
+                                        sx={{
+                                            p: 2,
+                                            color: 'text.primary',
+                                            bgcolor: 'background.paper',
+                                            borderRadius: '16px 16px 16px 4px',
+                                            maxWidth: { xs: '85%', md: '75%' },
+                                            border: '1px solid',
+                                            borderColor: 'divider',
+                                            wordWrap: 'break-word',
+                                            boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
+                                        }}
+                                    >
+                                        <Typography 
+                                            variant="body1" 
+                                            sx={{ whiteSpace: 'pre-wrap' }}
+                                        >
+                                            {item.response}
+                                        </Typography>
+                                        <Typography 
+                                            variant="caption" 
+                                            sx={{ 
+                                                display: 'block', 
+                                                mt: 1, 
+                                                textAlign: 'right',
+                                                color: 'text.secondary' 
+                                            }}
+                                        >
+                                            {new Date(item.created_at).toLocaleString()}
+                                        </Typography>
+                                    </Paper>
+                                </Box>
+                            </Box>
+                        ))
+                    )}
+                    <div ref={messagesEndRef} />
+                </Box>
+                
+                {/* Query input - updated with less width and rounded corners */}
+                <Box 
+                    component="footer"
+                    sx={{
+                        position: 'fixed',
+                        bottom: 0,
+                        left: isMobile ? 0 : sidebarWidth,
+                        right: 0,
+                        width: 'auto', 
+                        bgcolor: 'background.default',
+                        borderTop: '1px solid',
+                        borderColor: 'divider',
+                        zIndex: 50,
+                        display: 'flex',
+                        justifyContent: 'center', // Center the input box
+                        p: 2
+                    }}
+                >
+                    <form onSubmit={handleSubmit} style={{ width: '90%', maxWidth: '800px' }}> {/* Reduced width */}
+                        <Box sx={{ 
+                            display: 'flex',
+                            position: 'relative',
+                        }}>
+                            <TextField
+                                fullWidth
+                                placeholder="Type your message here..."
+                                variant="outlined"
+                                value={query}
+                                onChange={(e) => setQuery(e.target.value)}
+                                multiline
+                                minRows={1}
+                                maxRows={3}
+                                InputProps={{
+                                    endAdornment: (
+                                        <InputAdornment position="end">
+                                            <Button
+                                                variant="contained"
                                                 color="primary"
+                                                type="submit"
                                                 disabled={loading || !query.trim() || !currentSessionId}
-                                                sx={{ 
-                                                    position: 'absolute',
-                                                    right: 8,
-                                                    top: '50%',
-                                                    transform: 'translateY(-50%)',
-                                                    minWidth: 0,
-                                                    width: 46,
-                                                    height: 46,
+                                                sx={{
+                                                    minWidth: 'auto',
+                                                    width: 40,
+                                                    height: 40,
                                                     borderRadius: '50%',
+                                                    mr: 1
                                                 }}
                                             >
                                                 <SendIcon />
                                             </Button>
-                                        )
-                                    }}
-                                />
-                            </Box>
-                        </form>
-                        {loading && (
-                            <Box sx={{ 
-                                position: 'absolute', 
-                                bottom: '80px', 
-                                left: '50%', 
-                                transform: 'translateX(-50%)' 
-                            }}>
-                                <LoadingIndicator />
-                            </Box>
-                        )}
-                    </Box>
+                                        </InputAdornment>
+                                    ),
+                                    sx: {
+                                        pr: 0
+                                    }
+                                }}
+                                sx={{
+                                    flexGrow: 1,
+                                    '& .MuiOutlinedInput-root': {
+                                        borderRadius: '28px', // More pronounced rounded corners
+                                        bgcolor: 'background.paper',
+                                        '& fieldset': {
+                                            borderColor: 'divider',
+                                        },
+                                        '&:hover fieldset': {
+                                            borderColor: 'primary.main',
+                                        },
+                                        '&.Mui-focused fieldset': {
+                                            borderColor: 'primary.main',
+                                        }
+                                    }
+                                }}
+                            />
+                        </Box>
+                    </form>
+                    
+                    {loading && (
+                        <Box sx={{ 
+                            position: 'absolute', 
+                            top: -48, 
+                            left: '50%', 
+                            transform: 'translateX(-50%)',
+                            bgcolor: 'background.paper',
+                            borderRadius: '10px',
+                            p: 1,
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            zIndex: 1000
+                        }}>
+                            <LoadingIndicator />
+                            <Typography variant="caption" sx={{ ml: 1, color: 'text.secondary' }}>
+                                Processing...
+                            </Typography>
+                        </Box>
+                    )}
                 </Box>
             </Box>
         </Box>
