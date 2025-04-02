@@ -11,16 +11,22 @@ import {
     Button,
     Box,
     Avatar,
-    Link
+    Link,
+    Alert,
+    Collapse,
+    IconButton
 } from '@mui/material';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
+import CloseIcon from '@mui/icons-material/Close';
 import { Link as RouterLink } from 'react-router-dom';
 
 function Form({ route, method }) {
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
     const [loading, setLoading] = useState(false);
+    const [error, setError] = useState("");
+    const [openAlert, setOpenAlert] = useState(false);
     const navigate = useNavigate();
 
     const isLogin = method === "login";
@@ -29,6 +35,8 @@ function Form({ route, method }) {
 
     const handleSubmit = async (e) => {
         setLoading(true);
+        setError("");
+        setOpenAlert(false);
         e.preventDefault();
 
         try {
@@ -41,9 +49,33 @@ function Form({ route, method }) {
                 navigate("/login")
             }
         } catch (error) {
-            alert(error)
+            console.error("Auth error:", error);
+            
+            if (error.response) {
+                // The request was made and the server responded with a status code
+                // that falls out of the range of 2xx
+                const data = error.response.data;
+                
+                if (data.username) {
+                    setError(`Username error: ${data.username.join(', ')}`);
+                } else if (data.password) {
+                    setError(`Password error: ${data.password.join(', ')}`);
+                } else if (data.detail) {
+                    setError(data.detail);
+                } else {
+                    setError(`Error: ${error.response.status} ${error.response.statusText}`);
+                }
+            } else if (error.request) {
+                // The request was made but no response was received
+                setError("Network error: Unable to connect to the server. Please check if the server is running.");
+            } else {
+                // Something happened in setting up the request that triggered an Error
+                setError(`Error: ${error.message}`);
+            }
+            
+            setOpenAlert(true);
         } finally {
-            setLoading(false)
+            setLoading(false);
         }
     };
 
@@ -68,6 +100,26 @@ function Form({ route, method }) {
                 <Typography component="h1" variant="h5" sx={{ mb: 3, color: 'text.primary' }}>
                     {name}
                 </Typography>
+                
+                <Collapse in={openAlert} sx={{ width: '100%', mb: 2 }}>
+                    <Alert 
+                        severity="error"
+                        action={
+                            <IconButton
+                                aria-label="close"
+                                color="inherit"
+                                size="small"
+                                onClick={() => {
+                                    setOpenAlert(false);
+                                }}
+                            >
+                                <CloseIcon fontSize="inherit" />
+                            </IconButton>
+                        }
+                    >
+                        {error}
+                    </Alert>
+                </Collapse>
                 
                 <form onSubmit={handleSubmit} style={{ width: '100%' }}>
                     <TextField
