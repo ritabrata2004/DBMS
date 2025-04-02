@@ -16,7 +16,17 @@ class SessionListCreateView(APIView):
         return Response(serializer.data)
     
     def post(self, request):
-        # Create a new session for the user
+        # Check if the user already has any sessions
+        existing_sessions = Session.objects.filter(user=request.user)
+        
+        # If user already has sessions, don't create another one
+        if existing_sessions.exists():
+            # Return the most recent session instead
+            session = existing_sessions.first()  # Due to ordering in Meta, this will be most recent
+            serializer = SessionSerializer(session)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+            
+        # Create a new session for the user if they don't have any
         session = Session.objects.create(
             user=request.user,
             title=request.data.get('title', 'New Session')

@@ -68,7 +68,12 @@ function Home() {
             }
         };
         
-        initializeSession();
+        // Use a semaphore to prevent multiple initializations
+        let isInitializing = false;
+        if (!isInitializing) {
+            isInitializing = true;
+            initializeSession();
+        }
     }, []);
 
     // Scroll to bottom whenever messages change
