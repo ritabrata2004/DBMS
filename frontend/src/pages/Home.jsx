@@ -14,7 +14,8 @@ import {
   Chip,
   useMediaQuery,
   useTheme,
-  InputAdornment
+  InputAdornment,
+  Avatar
 } from "@mui/material";
 import SendIcon from '@mui/icons-material/Send';
 import LogoutIcon from '@mui/icons-material/Logout';
@@ -22,6 +23,8 @@ import MenuIcon from '@mui/icons-material/Menu';
 import { useNavigate } from "react-router-dom";
 import SessionSelector from "../components/SessionSelector";
 import LoadingIndicator from "../components/LoadingIndicator";
+import { jwtDecode } from "jwt-decode";
+import { ACCESS_TOKEN } from "../constants";
 
 function Home() {
     const theme = useTheme();
@@ -41,6 +44,9 @@ function Home() {
 
     // Sidebar width for calculations
     const sidebarWidth = 280;
+    
+    // Add state for username
+    const [username, setUsername] = useState('');
     
     // On component mount, we need to either load the user's most recent session
     // or create a new one if none exists
@@ -74,6 +80,34 @@ function Home() {
             isInitializing = true;
             initializeSession();
         }
+    }, []);
+
+    // Fetch user info when component mounts
+    useEffect(() => {
+        const fetchUserInfo = async () => {
+            try {
+                // First try to get username from JWT token
+                const token = localStorage.getItem(ACCESS_TOKEN);
+                if (token) {
+                    // Decode the token to get user information
+                    const decoded = jwtDecode(token);
+                    if (decoded.username) {
+                        setUsername(decoded.username);
+                        return;
+                    }
+                }
+                
+                // If we can't get it from the token, fetch from API
+                const response = await api.get('/api/user/me/');
+                if (response.data && response.data.username) {
+                    setUsername(response.data.username);
+                }
+            } catch (error) {
+                console.error('Error fetching user info:', error);
+            }
+        };
+        
+        fetchUserInfo();
     }, []);
 
     // Scroll to bottom whenever messages change
@@ -172,13 +206,38 @@ function Home() {
                         zIndex: 100
                     }}
                 >
-                    <Box sx={{ p: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
+                    <Box sx={{ 
+                        p: 2, 
+                        borderBottom: '1px solid', 
+                        borderColor: 'divider',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 1
+                    }}>
                         <Typography variant="h6" sx={{ color: 'primary.main', fontWeight: 500 }}>
                             LLM Query System
                         </Typography>
                         <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                             {currentSession?.title}
                         </Typography>
+                        
+                        {/* User greeting chip for desktop */}
+                        {username && (
+                            <Chip
+                                avatar={<Avatar sx={{ bgcolor: 'primary.dark' }}>{username.charAt(0).toUpperCase()}</Avatar>}
+                                label={`Hey ${username}`}
+                                variant="outlined"
+                                sx={{ 
+                                    alignSelf: 'flex-start',
+                                    mt: 1,
+                                    color: 'text.primary', 
+                                    borderColor: 'primary.main',
+                                    '& .MuiChip-label': {
+                                        fontWeight: 500
+                                    }
+                                }}
+                            />
+                        )}
                     </Box>
                     <Box sx={{ p: 2, flexGrow: 1, overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
                         <SessionSelector 
@@ -237,6 +296,24 @@ function Home() {
                                     />
                                 )}
                             </Typography>
+                            
+                            {/* Add user greeting chip */}
+                            {username && (
+                                <Chip
+                                    avatar={<Avatar sx={{ bgcolor: 'primary.dark' }}>{username.charAt(0).toUpperCase()}</Avatar>}
+                                    label={`Hey ${username}`}
+                                    variant="outlined"
+                                    sx={{ 
+                                        mr: 2, 
+                                        color: 'white', 
+                                        borderColor: 'rgba(255,255,255,0.5)',
+                                        '& .MuiChip-label': {
+                                            fontWeight: 500
+                                        }
+                                    }}
+                                />
+                            )}
+                            
                             <IconButton color="inherit" onClick={() => navigate('/logout')}>
                                 <LogoutIcon />
                             </IconButton>
