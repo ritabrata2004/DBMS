@@ -44,7 +44,8 @@ function Form({ route, method }) {
             if (isLogin) {
                 localStorage.setItem(ACCESS_TOKEN, res.data.access);
                 localStorage.setItem(REFRESH_TOKEN, res.data.refresh);
-                navigate("/")
+                // Redirect to the sessions page instead of creating sessions automatically
+                navigate("/sessions")
             } else {
                 navigate("/login")
             }

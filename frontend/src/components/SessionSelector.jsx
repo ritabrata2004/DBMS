@@ -15,11 +15,17 @@ import {
   TextField,
   Divider,
   Tooltip,
-  Fab
+  Fab,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  Select,
+  FormHelperText
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
+import DatabaseIcon from '@mui/icons-material/Storage';
 import api from '../api';
 import LoadingIndicator from './LoadingIndicator';
 
@@ -30,10 +36,14 @@ function SessionSelector({ currentSessionId, onSessionSelect, fullHeight = false
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [newSessionTitle, setNewSessionTitle] = useState('');
   const [editingSession, setEditingSession] = useState(null);
+  const [databases, setDatabases] = useState([]);
+  const [selectedDatabase, setSelectedDatabase] = useState(null);
+  const [databaseError, setDatabaseError] = useState('');
 
   // Fetch user sessions
   useEffect(() => {
     fetchSessions();
+    loadDatabases(); // Load databases when component mounts
   }, []);
 
   const fetchSessions = async () => {
@@ -48,12 +58,39 @@ function SessionSelector({ currentSessionId, onSessionSelect, fullHeight = false
     }
   };
 
-  const handleCreateSession = async () => {
+  // Load available databases
+  const loadDatabases = () => {
     try {
-      const response = await api.createSession(newSessionTitle || 'New Session');
+      // In a real implementation, this would call an API
+      // Since the backend isn't ready, we'll use hardcoded databases
+      setDatabases([
+        { id: 1, name: 'Customer Database' },
+        { id: 2, name: 'Product Inventory' },
+        { id: 3, name: 'Sales Records' },
+        { id: 4, name: 'Employee Directory' },
+        { id: 5, name: 'Market Research' }
+      ]);
+    } catch (error) {
+      console.error('Error loading databases:', error);
+    }
+  };
+
+  const handleCreateSession = async () => {
+    // Validate database selection
+    if (!selectedDatabase) {
+      setDatabaseError('Please select a database for this session');
+      return;
+    }
+
+    try {
+      const response = await api.createSession(newSessionTitle || 'New Session', selectedDatabase);
       setSessions([response.data, ...sessions]);
       onSessionSelect(response.data.id);
+      
+      // Reset form
       setNewSessionTitle('');
+      setSelectedDatabase(null);
+      setDatabaseError('');
       setCreateDialogOpen(false);
     } catch (error) {
       console.error('Error creating session:', error);
@@ -302,6 +339,29 @@ function SessionSelector({ currentSessionId, onSessionSelect, fullHeight = false
             onChange={(e) => setNewSessionTitle(e.target.value)}
             placeholder="New Session"
           />
+          <FormControl fullWidth margin="dense" error={!!databaseError}>
+            <InputLabel id="database-select-label">Select Database</InputLabel>
+            <Select
+              labelId="database-select-label"
+              value={selectedDatabase || ''}
+              onChange={(e) => {
+                const selectedDb = databases.find(db => db.id === e.target.value);
+                setSelectedDatabase(selectedDb);
+                setDatabaseError('');
+              }}
+              label="Select Database"
+            >
+              {databases.map((db) => (
+                <MenuItem key={db.id} value={db.id}>
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <DatabaseIcon fontSize="small" sx={{ mr: 1, color: 'secondary.main' }} />
+                    {db.name}
+                  </Box>
+                </MenuItem>
+              ))}
+            </Select>
+            {databaseError && <FormHelperText>{databaseError}</FormHelperText>}
+          </FormControl>
         </DialogContent>
         <DialogActions sx={{ px: 3, py: 2 }}>
           <Button 
