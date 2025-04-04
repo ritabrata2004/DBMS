@@ -20,7 +20,9 @@ import {
 import SendIcon from '@mui/icons-material/Send';
 import LogoutIcon from '@mui/icons-material/Logout';
 import MenuIcon from '@mui/icons-material/Menu';
-import { useNavigate } from "react-router-dom";
+import DatabaseIcon from '@mui/icons-material/Storage';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import { useNavigate, useLocation } from "react-router-dom";
 import SessionSelector from "../components/SessionSelector";
 import LoadingIndicator from "../components/LoadingIndicator";
 import { jwtDecode } from "jwt-decode";
@@ -29,6 +31,10 @@ import { ACCESS_TOKEN } from "../constants";
 function Home() {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+    const location = useLocation();
+    
+    // Get the selected database from location state
+    const [selectedDatabase, setSelectedDatabase] = useState(null);
     
     const [query, setQuery] = useState("");
     const [response, setResponse] = useState("");
@@ -48,37 +54,17 @@ function Home() {
     // Add state for username
     const [username, setUsername] = useState('');
     
-    // On component mount, we need to either load the user's most recent session
-    // or create a new one if none exists
+    // Add state for username
+    const [username, setUsername] = useState('');
+    
+    // Check for sessionId in location state when component mounts
     useEffect(() => {
-        const initializeSession = async () => {
-            try {
-                // Try to get user's sessions
-                const sessionsResponse = await api.getSessions();
-                const sessions = sessionsResponse.data;
-                
-                if (sessions.length > 0) {
-                    // If user has sessions, load the most recent one
-                    const mostRecentSession = sessions[0]; // API returns sessions ordered by updated_at
-                    loadSession(mostRecentSession.id);
-                } else {
-                    // If user has no sessions, create a new one
-                    const newSessionResponse = await api.createSession("New Session");
-                    setCurrentSessionId(newSessionResponse.data.id);
-                    setCurrentSession(newSessionResponse.data);
-                    setInitialLoading(false);
-                }
-            } catch (error) {
-                console.error("Error initializing session:", error);
-                setInitialLoading(false);
-            }
-        };
-        
-        // Use a semaphore to prevent multiple initializations
-        let isInitializing = false;
-        if (!isInitializing) {
-            isInitializing = true;
-            initializeSession();
+        if (location.state && location.state.sessionId) {
+            // If a specific session is passed, load it
+            loadSession(location.state.sessionId);
+        } else {
+            // If no session ID is provided, redirect to sessions page
+            navigate('/');
         }
     }, []);
 
@@ -129,6 +115,14 @@ function Home() {
             setCurrentSessionId(sessionId);
             setCurrentSession(sessionResponse.data);
             
+            // If the session has database information, update the selected database
+            if (sessionResponse.data.database_name && sessionResponse.data.database_id) {
+                setSelectedDatabase({
+                    id: sessionResponse.data.database_id,
+                    name: sessionResponse.data.database_name
+                });
+            }
+            
             // If there are queries in this session, set the most recent response
             const queries = sessionResponse.data.queries;
             if (queries && queries.length > 0) {
@@ -146,16 +140,24 @@ function Home() {
             setInitialLoading(false);
         }
     };
+
+    // Scroll to bottom whenever messages change
+    useEffect(() => {
+        scrollToBottom();
+    }, [currentSession]);
+
+    const scrollToBottom = () => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    };
     
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!query.trim() || !currentSessionId) return;
+        if (!query.trim() || !currentSessionId || !selectedDatabase) return;
         
         setLoading(true);
         try {
-            // This will be replaced with your actual API call
-            // For now, we'll simulate a response
-            const simulatedResponse = `This is a simulated response to your query: "${query}"`;
+            // Modified to show which database is being queried
+            const simulatedResponse = `Your query "${query}" has been sent to database ${selectedDatabase.name}.`;
             
             // Save the query and response to the current session
             await api.addQueryToSession(currentSessionId, query, simulatedResponse);
@@ -173,6 +175,10 @@ function Home() {
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleBackToSessions = () => {
+        navigate('/');
     };
 
     if (initialLoading) {
@@ -215,11 +221,13 @@ function Home() {
                         gap: 1
                     }}>
                         <Typography variant="h6" sx={{ color: 'primary.main', fontWeight: 500 }}>
-                            LLM Query System
+                            Database Query System
                         </Typography>
-                        <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                            {currentSession?.title}
-                        </Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
+                            <DatabaseIcon fontSize="small" sx={{ color: 'secondary.main', mr: 1 }} />
+                            <Typography variant="subtitle2" sx={{ color: 'text.secondary' }}>
+                                {selectedDatabase?.name}
+                            </Typography>
                         
                         {/* User greeting chip for desktop */}
                         {username && (
@@ -238,6 +246,7 @@ function Home() {
                                 }}
                             />
                         )}
+                        </Box>
                     </Box>
                     <Box sx={{ p: 2, flexGrow: 1, overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
                         <SessionSelector 
@@ -251,10 +260,19 @@ function Home() {
                             fullWidth 
                             variant="outlined" 
                             color="primary" 
+                            onClick={handleBackToSessions}
+                            sx={{ mb: 2 }}
+                        >
+                            Back to Sessions
+                        </Button>
+                        <Button 
+                            fullWidth 
+                            variant="outlined" 
+                            color="primary" 
                             onClick={() => navigate('/logout')}
                             startIcon={<LogoutIcon />}
                         >
-                            Logout
+                            Sign Out
                         </Button>
                     </Box>
                 </Box>
@@ -318,6 +336,14 @@ function Home() {
                                 <LogoutIcon />
                             </IconButton>
                         </Toolbar>
+                        {selectedDatabase && (
+                            <Box sx={{ bgcolor: 'rgba(0,0,0,0.1)', px: 2, py: 1, display: 'flex', alignItems: 'center' }}>
+                                <DatabaseIcon fontSize="small" sx={{ color: 'secondary.main', mr: 1 }} />
+                                <Typography variant="body2">
+                                    {selectedDatabase.name}
+                                </Typography>
+                            </Box>
+                        )}
                     </AppBar>
                 )}
                 
@@ -338,8 +364,16 @@ function Home() {
                         <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
                             <Box sx={{ p: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
                                 <Typography variant="h6" sx={{ color: 'primary.main', fontWeight: 500 }}>
-                                    LLM Query System
+                                    Database Query System
                                 </Typography>
+                                {selectedDatabase && (
+                                    <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
+                                        <DatabaseIcon fontSize="small" sx={{ color: 'secondary.main', mr: 1 }} />
+                                        <Typography variant="subtitle2" sx={{ color: 'text.secondary' }}>
+                                            {selectedDatabase.name}
+                                        </Typography>
+                                    </Box>
+                                )}
                             </Box>
                             <Box sx={{ p: 2, flexGrow: 1, overflow: 'auto' }}>
                                 <SessionSelector 
@@ -347,6 +381,26 @@ function Home() {
                                     onSessionSelect={loadSession}
                                     fullHeight={true}
                                 />
+                            </Box>
+                            <Box sx={{ p: 2, borderTop: '1px solid', borderColor: 'divider' }}>
+                                <Button 
+                                    fullWidth 
+                                    variant="outlined" 
+                                    color="primary" 
+                                    onClick={handleBackToSessions}
+                                    sx={{ mb: 2 }}
+                                >
+                                    Back to Sessions
+                                </Button>
+                                <Button 
+                                    fullWidth 
+                                    variant="outlined" 
+                                    color="primary" 
+                                    onClick={() => navigate('/logout')}
+                                    startIcon={<LogoutIcon />}
+                                >
+                                    Sign Out
+                                </Button>
                             </Box>
                         </Box>
                     </Drawer>
@@ -364,7 +418,27 @@ function Home() {
                         px: { xs: 2, md: 4 }
                     }}
                 >
-                    {!currentSession?.queries || currentSession.queries.length === 0 ? (
+                    {!selectedDatabase ? (
+                        <Box sx={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            height: '100%',
+                            opacity: 0.7
+                        }}>
+                            <Alert severity="warning" sx={{ mb: 2 }}>
+                                No database selected
+                            </Alert>
+                            <Button 
+                                variant="contained" 
+                                onClick={handleBackToSessions}
+                                startIcon={<ArrowBackIcon />}
+                            >
+                                Back to Sessions
+                            </Button>
+                        </Box>
+                    ) : !currentSession?.queries || currentSession.queries.length === 0 ? (
                         <Box sx={{
                             display: 'flex',
                             flexDirection: 'column',
@@ -377,7 +451,7 @@ function Home() {
                                 No messages yet
                             </Typography>
                             <Typography variant="body2" sx={{ color: 'text.secondary', mt: 1 }}>
-                                Start a conversation by typing a message below
+                                Start a conversation by typing a query below
                             </Typography>
                         </Box>
                     ) : (
@@ -466,13 +540,14 @@ function Home() {
                         }}>
                             <TextField
                                 fullWidth
-                                placeholder="Type your message here..."
+                                placeholder={`Type your query for ${selectedDatabase?.name || 'database'}...`}
                                 variant="outlined"
                                 value={query}
                                 onChange={(e) => setQuery(e.target.value)}
                                 multiline
                                 minRows={1}
                                 maxRows={3}
+                                disabled={!selectedDatabase}
                                 InputProps={{
                                     endAdornment: (
                                         <InputAdornment position="end">
@@ -480,7 +555,7 @@ function Home() {
                                                 variant="contained"
                                                 color="primary"
                                                 type="submit"
-                                                disabled={loading || !query.trim() || !currentSessionId}
+                                                disabled={loading || !query.trim() || !currentSessionId || !selectedDatabase}
                                                 sx={{
                                                     minWidth: 'auto',
                                                     width: 40,

@@ -20,7 +20,7 @@ api.interceptors.request.use(
 
 // Session management functions - all endpoints are now under /api/ prefix
 api.getSessions = () => api.get("/api/sessions/");
-api.createSession = (title) => api.post("/api/sessions/", { title });
+api.createSession = (title, database) => api.post("/api/sessions/", { title, database });
 api.getSession = (sessionId) => api.get(`/api/sessions/${sessionId}/`);
 api.updateSessionTitle = (sessionId, title) =>
   api.patch(`/api/sessions/${sessionId}/`, { title });
