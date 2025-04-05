@@ -47,6 +47,7 @@ class DatabaseConnector:
         """Execute a SQL query on the database and return results with column names"""
         results = {"columns": [], "rows": [], "status": ""}
         try:
+            print(query)
             conn = self.create_connection(database_obj)
             with conn.cursor() as cursor:
                 cursor.execute(query, params)
