@@ -6,6 +6,8 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 api_patterns = [
     path("user/", include("user.urls")),
     path("sessions/", include("session.urls")),
+    path("databases/", include("databases.urls")),
+    path("llm/", include("llm_agent.urls")),
     path("token/", TokenObtainPairView.as_view(), name="get_token"),
     path("token/refresh/", TokenRefreshView.as_view(), name="refresh"),
     # If there are any api app specific URLs, include them at the root level

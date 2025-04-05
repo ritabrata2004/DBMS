@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   Typography, 
   Box, 
@@ -16,73 +16,158 @@ import {
   ListItemButton,
   Divider,
   Alert,
-  Snackbar
+  Snackbar,
+  CircularProgress,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  Select,
+  FormHelperText,
+  Grid
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import ViewListIcon from '@mui/icons-material/ViewList';
 import LogoutIcon from '@mui/icons-material/Logout';
+import StorageIcon from '@mui/icons-material/Storage';
+import EditIcon from '@mui/icons-material/Edit';
+import QueryStatsIcon from '@mui/icons-material/QueryStats';
 import { useNavigate } from 'react-router-dom';
 import api from '../api';
 
 function DatabaseSelection() {
   const navigate = useNavigate();
-  const [showDatabases, setShowDatabases] = useState(false);
-  const [addDialogOpen, setAddDialogOpen] = useState(false);
-  const [newDatabaseName, setNewDatabaseName] = useState('');
+  const [loading, setLoading] = useState(false);
   const [databases, setDatabases] = useState([]);
+  const [selectedDatabase, setSelectedDatabase] = useState(null);
+  
+  // Add Database Dialog
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [newDatabaseInfo, setNewDatabaseInfo] = useState({
+    name: '',
+    description: '',
+    host: '',
+    port: '5432',
+    database_name: '',
+    username: '',
+    password: '',
+    ssl_enabled: false
+  });
+  
+  // Option Dialog
+  const [optionsDialogOpen, setOptionsDialogOpen] = useState(false);
+  
+  // Errors and messages
   const [error, setError] = useState(null);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [snackbarSeverity, setSnackbarSeverity] = useState('success');
 
-  const handleViewDatabases = async () => {
+  // Fetch databases on component mount
+  useEffect(() => {
+    fetchDatabases();
+  }, []);
+
+  const fetchDatabases = async () => {
+    setLoading(true);
     try {
-      // This would be replaced with an actual API call when backend is ready
-      // For now, we'll simulate a response with hardcoded database names
-      throw new Error('Backend not ready');
+      const response = await api.getDatabases();
+      setDatabases(response.data);
     } catch (error) {
-      // Hardcoded database names in the catch block as requested
-      setDatabases([
-        { id: 1, name: 'Customer Database' },
-        { id: 2, name: 'Product Inventory' },
-        { id: 3, name: 'Sales Records' },
-        { id: 4, name: 'Employee Directory' },
-        { id: 5, name: 'Market Research' }
-      ]);
-      setShowDatabases(true);
+      console.error('Error fetching databases:', error);
+      showSnackbar('Failed to fetch databases', 'error');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleAddDatabase = () => {
-    setAddDialogOpen(true);
+  const handleAddDatabaseChange = (e) => {
+    const { name, value } = e.target;
+    setNewDatabaseInfo({
+      ...newDatabaseInfo,
+      [name]: value
+    });
   };
 
-  const handleDatabaseSubmit = () => {
-    if (!newDatabaseName.trim()) {
-      setError('Database name cannot be empty');
+  const handleAddDatabaseSubmit = async () => {
+    if (!validateDatabaseForm()) {
       return;
     }
-
-    // In a real implementation, this would call the API
-    // Since backend isn't ready, we'll just add to our local state
-    const newDatabase = {
-      id: databases.length + 1,
-      name: newDatabaseName
-    };
     
-    setDatabases([...databases, newDatabase]);
-    setAddDialogOpen(false);
-    setNewDatabaseName('');
-    setSnackbarMessage(`Database "${newDatabaseName}" added successfully`);
-    setSnackbarOpen(true);
+    setLoading(true);
+    try {
+      const response = await api.createDatabase(newDatabaseInfo);
+      setDatabases([...databases, response.data]);
+      setAddDialogOpen(false);
+      resetNewDatabaseForm();
+      showSnackbar(`Database "${newDatabaseInfo.name}" added successfully`, 'success');
+    } catch (error) {
+      console.error('Error adding database:', error);
+      setError(error.response?.data?.message || 'Error adding database');
+      showSnackbar('Failed to add database', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const validateDatabaseForm = () => {
+    if (!newDatabaseInfo.name.trim()) {
+      setError('Database name is required');
+      return false;
+    }
+    if (!newDatabaseInfo.host.trim()) {
+      setError('Host is required');
+      return false;
+    }
+    if (!newDatabaseInfo.database_name.trim()) {
+      setError('Database name is required');
+      return false;
+    }
+    if (!newDatabaseInfo.username.trim()) {
+      setError('Username is required');
+      return false;
+    }
+    if (!newDatabaseInfo.password.trim()) {
+      setError('Password is required');
+      return false;
+    }
+    return true;
+  };
+
+  const resetNewDatabaseForm = () => {
+    setNewDatabaseInfo({
+      name: '',
+      description: '',
+      host: '',
+      port: '5432',
+      database_name: '',
+      username: '',
+      password: '',
+      ssl_enabled: false
+    });
+    setError(null);
   };
 
   const handleSelectDatabase = (database) => {
-    // Navigate to the home page with the selected database
-    navigate('/query', { state: { database } });
+    setSelectedDatabase(database);
+    // Store selected database in localStorage for access across the app
+    localStorage.setItem('selectedDatabase', JSON.stringify(database));
+    setOptionsDialogOpen(true);
   };
 
-  const handleBackToSessions = () => {
-    navigate('/');
+  const handleUpdateMetadata = () => {
+    navigate(`/db-tester`, { state: { database: selectedDatabase } });
+    setOptionsDialogOpen(false);
+  };
+
+  const handleQueryDatabase = () => {
+    navigate('/sessions', { state: { database: selectedDatabase } });
+    setOptionsDialogOpen(false);
+  };
+
+  const showSnackbar = (message, severity = 'success') => {
+    setSnackbarMessage(message);
+    setSnackbarSeverity(severity);
+    setSnackbarOpen(true);
   };
 
   return (
@@ -90,7 +175,7 @@ function DatabaseSelection() {
       <Paper elevation={3} sx={{ p: 4, borderRadius: 2, bgcolor: 'background.paper' }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
           <Typography variant="h4" component="h1" gutterBottom align="center" sx={{ color: 'primary.main' }}>
-            Database Query System
+            Database Management System
           </Typography>
           
           <Button
@@ -108,90 +193,234 @@ function DatabaseSelection() {
             variant="contained"
             size="large"
             startIcon={<AddIcon />}
-            onClick={handleAddDatabase}
+            onClick={() => setAddDialogOpen(true)}
             sx={{ py: 1.5, px: 3, borderRadius: 2 }}
           >
             Add New Database
           </Button>
+        </Box>
+
+        <Box sx={{ mt: 4 }}>
+          <Typography variant="h6" gutterBottom sx={{ color: 'text.primary', display: 'flex', alignItems: 'center' }}>
+            <StorageIcon sx={{ mr: 1 }} />
+            Your Databases
+          </Typography>
+          <Divider sx={{ mb: 2 }} />
           
-          <Button
-            variant="outlined"
-            size="large"
-            startIcon={<ViewListIcon />}
-            onClick={handleViewDatabases}
-            sx={{ py: 1.5, px: 3, borderRadius: 2 }}
-          >
-            View Available Databases
-          </Button>
-        </Box>
-
-        <Box sx={{ display: 'flex', justifyContent: 'center', mb: 4 }}>
-          <Button
-            variant="text"
-            onClick={handleBackToSessions}
-            sx={{ py: 1, px: 2 }}
-          >
-            Back to Sessions
-          </Button>
-        </Box>
-
-        {showDatabases && (
-          <Box sx={{ mt: 4 }}>
-            <Typography variant="h6" gutterBottom sx={{ color: 'text.primary' }}>
-              Available Databases
+          {loading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
+              <CircularProgress />
+            </Box>
+          ) : databases.length === 0 ? (
+            <Typography variant="body1" sx={{ color: 'text.secondary', textAlign: 'center', py: 3 }}>
+              No databases available. Add a new database to get started.
             </Typography>
-            <Divider sx={{ mb: 2 }} />
-            
-            {databases.length === 0 ? (
-              <Typography variant="body1" sx={{ color: 'text.secondary', textAlign: 'center', py: 3 }}>
-                No databases available. Add a new database to get started.
-              </Typography>
-            ) : (
-              <List sx={{ bgcolor: 'background.default', borderRadius: 1 }}>
-                {databases.map((db) => (
-                  <ListItem key={db.id} disablePadding divider>
-                    <ListItemButton onClick={() => handleSelectDatabase(db)}>
-                      <ListItemText 
-                        primary={db.name} 
-                        primaryTypographyProps={{ fontWeight: 500 }}
-                      />
-                    </ListItemButton>
-                  </ListItem>
-                ))}
-              </List>
-            )}
-          </Box>
-        )}
+          ) : (
+            <List sx={{ bgcolor: 'background.default', borderRadius: 1 }}>
+              {databases.map((db) => (
+                <ListItem key={db.id} disablePadding divider>
+                  <ListItemButton onClick={() => handleSelectDatabase(db)}>
+                    <ListItemText 
+                      primary={db.name} 
+                      secondary={db.description || `PostgreSQL Database at ${db.host}:${db.port}`}
+                      primaryTypographyProps={{ fontWeight: 500 }}
+                    />
+                    <Typography 
+                      variant="caption" 
+                      sx={{ 
+                        color: db.connection_status === 'connected' ? 'success.main' : 
+                              db.connection_status === 'error' ? 'error.main' : 'warning.main',
+                        fontWeight: 'bold',
+                        mr: 1
+                      }}
+                    >
+                      {db.connection_status?.toUpperCase() || 'UNKNOWN'}
+                    </Typography>
+                  </ListItemButton>
+                </ListItem>
+              ))}
+            </List>
+          )}
+        </Box>
         
         {/* Add Database Dialog */}
         <Dialog 
           open={addDialogOpen} 
-          onClose={() => setAddDialogOpen(false)}
+          onClose={() => {
+            setAddDialogOpen(false);
+            resetNewDatabaseForm();
+          }}
+          fullWidth
+          maxWidth="md"
+        >
+          <DialogTitle>Add New PostgreSQL Database</DialogTitle>
+          <DialogContent>
+            <Grid container spacing={2} sx={{ mt: 0 }}>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  autoFocus
+                  margin="dense"
+                  name="name"
+                  label="Database Display Name"
+                  type="text"
+                  fullWidth
+                  variant="outlined"
+                  value={newDatabaseInfo.name}
+                  onChange={handleAddDatabaseChange}
+                  required
+                  error={error && !newDatabaseInfo.name}
+                  helperText={error && !newDatabaseInfo.name ? 'Display name is required' : ''}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  margin="dense"
+                  name="description"
+                  label="Description (Optional)"
+                  type="text"
+                  fullWidth
+                  variant="outlined"
+                  value={newDatabaseInfo.description}
+                  onChange={handleAddDatabaseChange}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  margin="dense"
+                  name="host"
+                  label="Host"
+                  type="text"
+                  fullWidth
+                  variant="outlined"
+                  value={newDatabaseInfo.host}
+                  onChange={handleAddDatabaseChange}
+                  required
+                  error={error && !newDatabaseInfo.host}
+                  helperText={error && !newDatabaseInfo.host ? 'Host is required' : ''}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  margin="dense"
+                  name="port"
+                  label="Port"
+                  type="text"
+                  fullWidth
+                  variant="outlined"
+                  value={newDatabaseInfo.port}
+                  onChange={handleAddDatabaseChange}
+                  required
+                  error={error && !newDatabaseInfo.port}
+                  helperText={error && !newDatabaseInfo.port ? 'Port is required' : ''}
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  margin="dense"
+                  name="database_name"
+                  label="Database Name"
+                  type="text"
+                  fullWidth
+                  variant="outlined"
+                  value={newDatabaseInfo.database_name}
+                  onChange={handleAddDatabaseChange}
+                  required
+                  error={error && !newDatabaseInfo.database_name}
+                  helperText={error && !newDatabaseInfo.database_name ? 'Database name is required' : ''}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  margin="dense"
+                  name="username"
+                  label="Username"
+                  type="text"
+                  fullWidth
+                  variant="outlined"
+                  value={newDatabaseInfo.username}
+                  onChange={handleAddDatabaseChange}
+                  required
+                  error={error && !newDatabaseInfo.username}
+                  helperText={error && !newDatabaseInfo.username ? 'Username is required' : ''}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  margin="dense"
+                  name="password"
+                  label="Password"
+                  type="password"
+                  fullWidth
+                  variant="outlined"
+                  value={newDatabaseInfo.password}
+                  onChange={handleAddDatabaseChange}
+                  required
+                  error={error && !newDatabaseInfo.password}
+                  helperText={error && !newDatabaseInfo.password ? 'Password is required' : ''}
+                />
+              </Grid>
+            </Grid>
+          </DialogContent>
+          <DialogActions sx={{ px: 3, pb: 2 }}>
+            <Button 
+              onClick={() => {
+                setAddDialogOpen(false);
+                resetNewDatabaseForm();
+              }} 
+              color="inherit"
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleAddDatabaseSubmit} 
+              variant="contained"
+              disabled={loading}
+            >
+              {loading ? <CircularProgress size={24} /> : 'Add Database'}
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Database Options Dialog */}
+        <Dialog
+          open={optionsDialogOpen}
+          onClose={() => setOptionsDialogOpen(false)}
           fullWidth
           maxWidth="sm"
         >
-          <DialogTitle>Add New Database</DialogTitle>
+          <DialogTitle>{selectedDatabase?.name || 'Database Options'}</DialogTitle>
           <DialogContent>
-            <TextField
-              autoFocus
-              margin="dense"
-              label="Database Name"
-              type="text"
-              fullWidth
-              variant="outlined"
-              value={newDatabaseName}
-              onChange={(e) => setNewDatabaseName(e.target.value)}
-              error={!!error}
-              helperText={error}
-              sx={{ mt: 2 }}
-            />
+            <Typography variant="body1" sx={{ mb: 2 }}>
+              What would you like to do with this database?
+            </Typography>
+            <Grid container spacing={2}>
+              <Grid item xs={12}>
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  startIcon={<EditIcon />}
+                  onClick={handleUpdateMetadata}
+                  sx={{ py: 2, justifyContent: 'flex-start' }}
+                >
+                  Update Database Metadata
+                </Button>
+              </Grid>
+              <Grid item xs={12}>
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  startIcon={<QueryStatsIcon />}
+                  onClick={handleQueryDatabase}
+                  sx={{ py: 2, justifyContent: 'flex-start' }}
+                >
+                  Query Database
+                </Button>
+              </Grid>
+            </Grid>
           </DialogContent>
           <DialogActions sx={{ px: 3, pb: 2 }}>
-            <Button onClick={() => setAddDialogOpen(false)} color="inherit">
+            <Button onClick={() => setOptionsDialogOpen(false)} color="inherit">
               Cancel
-            </Button>
-            <Button onClick={handleDatabaseSubmit} variant="contained">
-              Add Database
             </Button>
           </DialogActions>
         </Dialog>
@@ -205,7 +434,7 @@ function DatabaseSelection() {
         >
           <Alert 
             onClose={() => setSnackbarOpen(false)} 
-            severity="success" 
+            severity={snackbarSeverity} 
             variant="filled"
             sx={{ width: '100%' }}
           >
