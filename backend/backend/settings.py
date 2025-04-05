@@ -72,6 +72,7 @@ INSTALLED_APPS = [
     "api",
     "session",  # Added session app
     "user",     # Added user app
+    "databases", # Added databases app
     "rest_framework",
     "corsheaders",
 ]

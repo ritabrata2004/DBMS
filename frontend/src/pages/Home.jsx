@@ -56,10 +56,9 @@ function Home() {
                     const mostRecentSession = sessions[0]; // API returns sessions ordered by updated_at
                     loadSession(mostRecentSession.id);
                 } else {
-                    // If user has no sessions, create a new one
-                    const newSessionResponse = await api.createSession("New Session");
-                    setCurrentSessionId(newSessionResponse.data.id);
-                    setCurrentSession(newSessionResponse.data);
+                    // If user has no sessions, redirect to database selection
+                    // since we can't create a session without a database
+                    navigate('/');
                     setInitialLoading(false);
                 }
             } catch (error) {
@@ -119,15 +118,45 @@ function Home() {
         
         setLoading(true);
         try {
-            // This will be replaced with your actual API call
-            // For now, we'll simulate a response
-            const simulatedResponse = `This is a simulated response to your query: "${query}"`;
+            // Get the database ID from the current session
+            const sessionResponse = await api.getSession(currentSessionId);
+            const databaseId = sessionResponse.data.database_id;
             
-            // Save the query and response to the current session
-            await api.addQueryToSession(currentSessionId, query, simulatedResponse);
+            if (!databaseId) {
+                console.error("No database associated with this session");
+                throw new Error("No database associated with this session");
+            }
+            
+            // Step 1: Generate SQL from natural language query
+            const sqlGenResponse = await api.generateSqlFromNL(query, databaseId);
+            
+            // Access the correct field name 'sql_query' instead of 'sql'
+            let generatedSql = sqlGenResponse.data.sql_query;
+            
+            // Clean SQL query by removing markdown code blocks if present
+            generatedSql = cleanSqlQuery(generatedSql);
+            
+            console.log("Generated SQL:", generatedSql);
+            
+            // Step 2: Execute the generated SQL
+            const executionResponse = await api.executeSqlQuery(databaseId, generatedSql);
+            
+            // Format the response to display the generated SQL and the results
+            const formattedResponse = `
+**Generated SQL:**
+\`\`\`
+${generatedSql}
+\`\`\`
+
+**Results:**
+${formatQueryResults(executionResponse.data)}
+`;
+            
+            // Step 3: Save the query and response to the current session
+            await api.addQueryToSession(currentSessionId, query, formattedResponse);
             
             // Update the local state to show the response
-            setResponse(simulatedResponse);
+            setResponse(formattedResponse);
             
             // Clear the input field
             setQuery("");
@@ -135,10 +164,63 @@ function Home() {
             // Reload the session to get the updated queries
             loadSession(currentSessionId);
         } catch (error) {
-            console.error("Error querying LLM:", error);
+            console.error("Error processing query:", error);
+            
+            // Create an error message that's user-friendly
+            let errorMessage = "An error occurred while processing your query.";
+            
+            if (error.response) {
+                // The request was made and the server responded with a status code
+                // that falls out of the range of 2xx
+                if (error.response.data && error.response.data.detail) {
+                    errorMessage = `Error: ${error.response.data.detail}`;
+                } else if (error.response.data && error.response.data.error) {
+                    errorMessage = `Error: ${error.response.data.error}`;
+                } else {
+                    errorMessage = `Error: ${error.response.status} - ${error.response.statusText}`;
+                }
+            } else if (error.message) {
+                errorMessage = `Error: ${error.message}`;
+            }
+            
+            // Save the error message as a response
+            await api.addQueryToSession(currentSessionId, query, errorMessage);
+            setResponse(errorMessage);
+            
+            // Reload the session to get the updated queries
+            loadSession(currentSessionId);
         } finally {
             setLoading(false);
         }
+    };
+    
+    // Helper function to clean SQL query by removing markdown code block markers
+    const cleanSqlQuery = (sql) => {
+        if (!sql) return sql;
+        
+        // Remove ```sql and ``` markers if present
+        return sql.replace(/```sql\s*/g, '').replace(/```\s*$/g, '').replace(/^```\s*/g, '').replace(/\s*```$/g, '').trim();
+    };
+
+    // Helper function to format query results for display
+    const formatQueryResults = (results) => {
+        if (!results || !results.data || results.data.length === 0) {
+            return "No results found.";
+        }
+        
+        // Create a table header from the first row keys
+        const headers = Object.keys(results.data[0]);
+        
+        // Format as markdown table
+        let tableMarkdown = `| ${headers.join(' | ')} |\n`;
+        tableMarkdown += `| ${headers.map(() => '---').join(' | ')} |\n`;
+        
+        // Add table rows
+        results.data.forEach(row => {
+            tableMarkdown += `| ${headers.map(h => String(row[h] || '').replace(/\n/g, ' ')).join(' | ')} |\n`;
+        });
+        
+        return tableMarkdown;
     };
 
     if (initialLoading) {

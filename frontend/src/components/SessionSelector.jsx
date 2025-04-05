@@ -59,19 +59,14 @@ function SessionSelector({ currentSessionId, onSessionSelect, fullHeight = false
   };
 
   // Load available databases
-  const loadDatabases = () => {
+  const loadDatabases = async () => {
     try {
-      // In a real implementation, this would call an API
-      // Since the backend isn't ready, we'll use hardcoded databases
-      setDatabases([
-        { id: 1, name: 'Customer Database' },
-        { id: 2, name: 'Product Inventory' },
-        { id: 3, name: 'Sales Records' },
-        { id: 4, name: 'Employee Directory' },
-        { id: 5, name: 'Market Research' }
-      ]);
+      const response = await api.getDatabases();
+      setDatabases(response.data);
     } catch (error) {
       console.error('Error loading databases:', error);
+      // Set empty array if we can't load databases
+      setDatabases([]);
     }
   };
 

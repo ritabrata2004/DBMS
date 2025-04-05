@@ -8,6 +8,7 @@ import NotFound from "./pages/NotFound"
 import ProtectedRoute from "./components/ProtectedRoute"
 import Layout from "./components/Layout"
 import DatabaseSelection from "./pages/DatabaseSelection"
+import DatabaseTester from "./pages/DatabaseTester"
 
 function Logout() {
   localStorage.clear()
@@ -27,7 +28,7 @@ function App() {
           path="/"
           element={
             <ProtectedRoute>
-              <Sessions />
+              <DatabaseSelection />
             </ProtectedRoute>
           }
         />
@@ -52,6 +53,14 @@ function App() {
           element={
             <ProtectedRoute>
               <DatabaseSelection />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/db-tester"
+          element={
+            <ProtectedRoute>
+              <DatabaseTester />
             </ProtectedRoute>
           }
         />
