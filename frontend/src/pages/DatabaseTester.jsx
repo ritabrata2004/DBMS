@@ -34,7 +34,8 @@ import {
   AutoAwesome as AutoAwesomeIcon,
   PlayArrow as PlayArrowIcon,
   Close as CloseIcon,
-  ArrowBack as ArrowBackIcon
+  ArrowBack as ArrowBackIcon,
+  Delete as DeleteIcon
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import api from "../api";
@@ -148,6 +149,8 @@ const DatabaseTester = () => {
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
   const [snackbarSeverity, setSnackbarSeverity] = useState("success");
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [databaseToDelete, setDatabaseToDelete] = useState(null);
 
   // Load existing databases on component mount
   useEffect(() => {
@@ -375,6 +378,44 @@ const DatabaseTester = () => {
     } finally {
       setMetadataLoading(false);
     }
+  };
+
+  // Handle database deletion
+  const handleDeleteDatabase = async () => {
+    if (!databaseToDelete) return;
+    
+    try {
+      setLoading(true);
+      await api.delete(`/api/databases/databases/${databaseToDelete}/`);
+      
+      // Update the databases list
+      setDatabases(databases.filter(db => db.id !== databaseToDelete));
+      
+      // If the deleted database was selected, clear selection
+      if (selectedDb === databaseToDelete) {
+        setSelectedDb(null);
+        setQueryResult(null);
+        setQueryError(null);
+        setSchemaData(null);
+        setRelationshipData(null);
+        setSearchResults(null);
+      }
+      
+      showSnackbar("Database deleted successfully");
+      setDatabaseToDelete(null);
+      setDeleteDialogOpen(false);
+    } catch (err) {
+      showSnackbar("Failed to delete database", "error");
+      console.error("Error deleting database:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Open delete confirmation dialog
+  const openDeleteDialog = (dbId) => {
+    setDatabaseToDelete(dbId);
+    setDeleteDialogOpen(true);
   };
 
   // Database selection handler
@@ -617,6 +658,15 @@ const DatabaseTester = () => {
                           onClick={() => handleDatabaseSelect(db.id)}
                         >
                           {selectedDb === db.id ? "Selected" : "Select"}
+                        </Button>
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          color="error"
+                          onClick={() => openDeleteDialog(db.id)}
+                          startIcon={<DeleteIcon />}
+                        >
+                          Delete
                         </Button>
                       </Box>
                     </Box>
@@ -1264,6 +1314,52 @@ const DatabaseTester = () => {
             {snackbarMessage}
           </Alert>
         </Snackbar>
+
+        {/* Delete Confirmation Dialog */}
+        <Dialog
+          open={deleteDialogOpen}
+          onClose={() => setDeleteDialogOpen(false)}
+          aria-labelledby="delete-dialog-title"
+          PaperProps={{
+            sx: {
+              backgroundColor: '#333',
+              color: '#fff'
+            }
+          }}
+        >
+          <DialogTitle id="delete-dialog-title" sx={{ borderBottom: '1px solid rgba(255, 255, 255, 0.12)' }}>
+            Confirm Database Deletion
+          </DialogTitle>
+          <DialogContent sx={{ mt: 2 }}>
+            <Typography>
+              Are you sure you want to delete this database connection? This action cannot be undone.
+            </Typography>
+            <Typography variant="body2" color="error" sx={{ mt: 2 }}>
+              Note: This will only remove the connection from this application, not delete the actual database.
+            </Typography>
+          </DialogContent>
+          <DialogActions sx={{ borderTop: '1px solid rgba(255, 255, 255, 0.12)', px: 3, py: 2 }}>
+            <Button 
+              onClick={() => setDeleteDialogOpen(false)} 
+              variant="outlined"
+              sx={{ 
+                color: 'rgba(255, 255, 255, 0.7)',
+                borderColor: 'rgba(255, 255, 255, 0.23)' 
+              }}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleDeleteDatabase} 
+              color="error" 
+              variant="contained"
+              startIcon={<DeleteIcon />}
+              disabled={loading}
+            >
+              {loading ? <CircularProgress size={24} color="inherit" /> : "Delete"}
+            </Button>
+          </DialogActions>
+        </Dialog>
       </Container>
     </ThemeProvider>
   );
