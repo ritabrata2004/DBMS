@@ -9,6 +9,7 @@ import ProtectedRoute from "./components/ProtectedRoute"
 import Layout from "./components/Layout"
 import DatabaseSelection from "./pages/DatabaseSelection"
 import DatabaseTester from "./pages/DatabaseTester"
+import UserProfile from "./pages/UserProfile"
 
 function Logout() {
   localStorage.clear()
@@ -61,6 +62,14 @@ function App() {
           element={
             <ProtectedRoute>
               <DatabaseTester />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/profile"
+          element={
+            <ProtectedRoute>
+              <UserProfile />
             </ProtectedRoute>
           }
         />

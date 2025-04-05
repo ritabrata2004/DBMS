@@ -23,7 +23,8 @@ import {
   InputLabel,
   Select,
   FormHelperText,
-  Grid
+  Grid,
+  IconButton
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import ViewListIcon from '@mui/icons-material/ViewList';
@@ -31,8 +32,10 @@ import LogoutIcon from '@mui/icons-material/Logout';
 import StorageIcon from '@mui/icons-material/Storage';
 import EditIcon from '@mui/icons-material/Edit';
 import QueryStatsIcon from '@mui/icons-material/QueryStats';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { useNavigate } from 'react-router-dom';
 import api from '../api';
+import Navbar from '../components/Navbar';
 
 function DatabaseSelection() {
   const navigate = useNavigate();
@@ -171,278 +174,281 @@ function DatabaseSelection() {
   };
 
   return (
-    <Container maxWidth="md" sx={{ pt: 8 }}>
-      <Paper elevation={3} sx={{ p: 4, borderRadius: 2, bgcolor: 'background.paper' }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
-          <Typography variant="h4" component="h1" gutterBottom align="center" sx={{ color: 'primary.main' }}>
-            Database Management System
-          </Typography>
-          
-          <Button
-            variant="outlined"
-            startIcon={<LogoutIcon />}
-            onClick={() => navigate('/logout')}
-            sx={{ py: 1.5, px: 3, borderRadius: 2 }}
-          >
-            Sign Out
-          </Button>
-        </Box>
-        
-        <Box sx={{ display: 'flex', justifyContent: 'center', gap: 3, mb: 4 }}>
-          <Button
-            variant="contained"
-            size="large"
-            startIcon={<AddIcon />}
-            onClick={() => setAddDialogOpen(true)}
-            sx={{ py: 1.5, px: 3, borderRadius: 2 }}
-          >
-            Add New Database
-          </Button>
-        </Box>
-
-        <Box sx={{ mt: 4 }}>
-          <Typography variant="h6" gutterBottom sx={{ color: 'text.primary', display: 'flex', alignItems: 'center' }}>
-            <StorageIcon sx={{ mr: 1 }} />
-            Your Databases
-          </Typography>
-          <Divider sx={{ mb: 2 }} />
-          
-          {loading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
-              <CircularProgress />
-            </Box>
-          ) : databases.length === 0 ? (
-            <Typography variant="body1" sx={{ color: 'text.secondary', textAlign: 'center', py: 3 }}>
-              No databases available. Add a new database to get started.
+    <>
+      <Navbar />
+      <Container maxWidth="md" sx={{ pt: 8 }}>
+        <Paper elevation={3} sx={{ p: 4, borderRadius: 2, bgcolor: 'background.paper' }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
+            <Typography variant="h4" component="h1" gutterBottom align="center" sx={{ color: 'primary.main' }}>
+              Database Management System
             </Typography>
-          ) : (
-            <List sx={{ bgcolor: 'background.default', borderRadius: 1 }}>
-              {databases.map((db) => (
-                <ListItem key={db.id} disablePadding divider>
-                  <ListItemButton onClick={() => handleSelectDatabase(db)}>
-                    <ListItemText 
-                      primary={db.name} 
-                      secondary={db.description || `PostgreSQL Database at ${db.host}:${db.port}`}
-                      primaryTypographyProps={{ fontWeight: 500 }}
-                    />
-                    <Typography 
-                      variant="caption" 
-                      sx={{ 
-                        color: db.connection_status === 'connected' ? 'success.main' : 
-                              db.connection_status === 'error' ? 'error.main' : 'warning.main',
-                        fontWeight: 'bold',
-                        mr: 1
-                      }}
-                    >
-                      {db.connection_status?.toUpperCase() || 'UNKNOWN'}
-                    </Typography>
-                  </ListItemButton>
-                </ListItem>
-              ))}
-            </List>
-          )}
-        </Box>
-        
-        {/* Add Database Dialog */}
-        <Dialog 
-          open={addDialogOpen} 
-          onClose={() => {
-            setAddDialogOpen(false);
-            resetNewDatabaseForm();
-          }}
-          fullWidth
-          maxWidth="md"
-        >
-          <DialogTitle>Add New PostgreSQL Database</DialogTitle>
-          <DialogContent>
-            <Grid container spacing={2} sx={{ mt: 0 }}>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  autoFocus
-                  margin="dense"
-                  name="name"
-                  label="Database Display Name"
-                  type="text"
-                  fullWidth
-                  variant="outlined"
-                  value={newDatabaseInfo.name}
-                  onChange={handleAddDatabaseChange}
-                  required
-                  error={error && !newDatabaseInfo.name}
-                  helperText={error && !newDatabaseInfo.name ? 'Display name is required' : ''}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  margin="dense"
-                  name="description"
-                  label="Description (Optional)"
-                  type="text"
-                  fullWidth
-                  variant="outlined"
-                  value={newDatabaseInfo.description}
-                  onChange={handleAddDatabaseChange}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  margin="dense"
-                  name="host"
-                  label="Host"
-                  type="text"
-                  fullWidth
-                  variant="outlined"
-                  value={newDatabaseInfo.host}
-                  onChange={handleAddDatabaseChange}
-                  required
-                  error={error && !newDatabaseInfo.host}
-                  helperText={error && !newDatabaseInfo.host ? 'Host is required' : ''}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  margin="dense"
-                  name="port"
-                  label="Port"
-                  type="text"
-                  fullWidth
-                  variant="outlined"
-                  value={newDatabaseInfo.port}
-                  onChange={handleAddDatabaseChange}
-                  required
-                  error={error && !newDatabaseInfo.port}
-                  helperText={error && !newDatabaseInfo.port ? 'Port is required' : ''}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  margin="dense"
-                  name="database_name"
-                  label="Database Name"
-                  type="text"
-                  fullWidth
-                  variant="outlined"
-                  value={newDatabaseInfo.database_name}
-                  onChange={handleAddDatabaseChange}
-                  required
-                  error={error && !newDatabaseInfo.database_name}
-                  helperText={error && !newDatabaseInfo.database_name ? 'Database name is required' : ''}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  margin="dense"
-                  name="username"
-                  label="Username"
-                  type="text"
-                  fullWidth
-                  variant="outlined"
-                  value={newDatabaseInfo.username}
-                  onChange={handleAddDatabaseChange}
-                  required
-                  error={error && !newDatabaseInfo.username}
-                  helperText={error && !newDatabaseInfo.username ? 'Username is required' : ''}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  margin="dense"
-                  name="password"
-                  label="Password"
-                  type="password"
-                  fullWidth
-                  variant="outlined"
-                  value={newDatabaseInfo.password}
-                  onChange={handleAddDatabaseChange}
-                  required
-                  error={error && !newDatabaseInfo.password}
-                  helperText={error && !newDatabaseInfo.password ? 'Password is required' : ''}
-                />
-              </Grid>
-            </Grid>
-          </DialogContent>
-          <DialogActions sx={{ px: 3, pb: 2 }}>
-            <Button 
-              onClick={() => {
-                setAddDialogOpen(false);
-                resetNewDatabaseForm();
-              }} 
-              color="inherit"
+            
+            <Button
+              variant="outlined"
+              startIcon={<LogoutIcon />}
+              onClick={() => navigate('/logout')}
+              sx={{ py: 1.5, px: 3, borderRadius: 2 }}
             >
-              Cancel
+              Sign Out
             </Button>
-            <Button 
-              onClick={handleAddDatabaseSubmit} 
+          </Box>
+          
+          <Box sx={{ display: 'flex', justifyContent: 'center', gap: 3, mb: 4 }}>
+            <Button
               variant="contained"
-              disabled={loading}
+              size="large"
+              startIcon={<AddIcon />}
+              onClick={() => setAddDialogOpen(true)}
+              sx={{ py: 1.5, px: 3, borderRadius: 2 }}
             >
-              {loading ? <CircularProgress size={24} /> : 'Add Database'}
+              Add New Database
             </Button>
-          </DialogActions>
-        </Dialog>
+          </Box>
 
-        {/* Database Options Dialog */}
-        <Dialog
-          open={optionsDialogOpen}
-          onClose={() => setOptionsDialogOpen(false)}
-          fullWidth
-          maxWidth="sm"
-        >
-          <DialogTitle>{selectedDatabase?.name || 'Database Options'}</DialogTitle>
-          <DialogContent>
-            <Typography variant="body1" sx={{ mb: 2 }}>
-              What would you like to do with this database?
+          <Box sx={{ mt: 4 }}>
+            <Typography variant="h6" gutterBottom sx={{ color: 'text.primary', display: 'flex', alignItems: 'center' }}>
+              <StorageIcon sx={{ mr: 1 }} />
+              Your Databases
             </Typography>
-            <Grid container spacing={2}>
-              <Grid item xs={12}>
-                <Button
-                  fullWidth
-                  variant="outlined"
-                  startIcon={<EditIcon />}
-                  onClick={handleUpdateMetadata}
-                  sx={{ py: 2, justifyContent: 'flex-start' }}
-                >
-                  Update Database Metadata
-                </Button>
-              </Grid>
-              <Grid item xs={12}>
-                <Button
-                  fullWidth
-                  variant="outlined"
-                  startIcon={<QueryStatsIcon />}
-                  onClick={handleQueryDatabase}
-                  sx={{ py: 2, justifyContent: 'flex-start' }}
-                >
-                  Query Database
-                </Button>
-              </Grid>
-            </Grid>
-          </DialogContent>
-          <DialogActions sx={{ px: 3, pb: 2 }}>
-            <Button onClick={() => setOptionsDialogOpen(false)} color="inherit">
-              Cancel
-            </Button>
-          </DialogActions>
-        </Dialog>
-
-        {/* Snackbar for notifications */}
-        <Snackbar
-          open={snackbarOpen}
-          autoHideDuration={4000}
-          onClose={() => setSnackbarOpen(false)}
-          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-        >
-          <Alert 
-            onClose={() => setSnackbarOpen(false)} 
-            severity={snackbarSeverity} 
-            variant="filled"
-            sx={{ width: '100%' }}
+            <Divider sx={{ mb: 2 }} />
+            
+            {loading ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
+                <CircularProgress />
+              </Box>
+            ) : databases.length === 0 ? (
+              <Typography variant="body1" sx={{ color: 'text.secondary', textAlign: 'center', py: 3 }}>
+                No databases available. Add a new database to get started.
+              </Typography>
+            ) : (
+              <List sx={{ bgcolor: 'background.default', borderRadius: 1 }}>
+                {databases.map((db) => (
+                  <ListItem key={db.id} disablePadding divider>
+                    <ListItemButton onClick={() => handleSelectDatabase(db)}>
+                      <ListItemText 
+                        primary={db.name} 
+                        secondary={db.description || `PostgreSQL Database at ${db.host}:${db.port}`}
+                        primaryTypographyProps={{ fontWeight: 500 }}
+                      />
+                      <Typography 
+                        variant="caption" 
+                        sx={{ 
+                          color: db.connection_status === 'connected' ? 'success.main' : 
+                                db.connection_status === 'error' ? 'error.main' : 'warning.main',
+                          fontWeight: 'bold',
+                          mr: 1
+                        }}
+                      >
+                        {db.connection_status?.toUpperCase() || 'UNKNOWN'}
+                      </Typography>
+                    </ListItemButton>
+                  </ListItem>
+                ))}
+              </List>
+            )}
+          </Box>
+          
+          {/* Add Database Dialog */}
+          <Dialog 
+            open={addDialogOpen} 
+            onClose={() => {
+              setAddDialogOpen(false);
+              resetNewDatabaseForm();
+            }}
+            fullWidth
+            maxWidth="md"
           >
-            {snackbarMessage}
-          </Alert>
-        </Snackbar>
-      </Paper>
-    </Container>
+            <DialogTitle>Add New PostgreSQL Database</DialogTitle>
+            <DialogContent>
+              <Grid container spacing={2} sx={{ mt: 0 }}>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    autoFocus
+                    margin="dense"
+                    name="name"
+                    label="Database Display Name"
+                    type="text"
+                    fullWidth
+                    variant="outlined"
+                    value={newDatabaseInfo.name}
+                    onChange={handleAddDatabaseChange}
+                    required
+                    error={error && !newDatabaseInfo.name}
+                    helperText={error && !newDatabaseInfo.name ? 'Display name is required' : ''}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    margin="dense"
+                    name="description"
+                    label="Description (Optional)"
+                    type="text"
+                    fullWidth
+                    variant="outlined"
+                    value={newDatabaseInfo.description}
+                    onChange={handleAddDatabaseChange}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    margin="dense"
+                    name="host"
+                    label="Host"
+                    type="text"
+                    fullWidth
+                    variant="outlined"
+                    value={newDatabaseInfo.host}
+                    onChange={handleAddDatabaseChange}
+                    required
+                    error={error && !newDatabaseInfo.host}
+                    helperText={error && !newDatabaseInfo.host ? 'Host is required' : ''}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    margin="dense"
+                    name="port"
+                    label="Port"
+                    type="text"
+                    fullWidth
+                    variant="outlined"
+                    value={newDatabaseInfo.port}
+                    onChange={handleAddDatabaseChange}
+                    required
+                    error={error && !newDatabaseInfo.port}
+                    helperText={error && !newDatabaseInfo.port ? 'Port is required' : ''}
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField
+                    margin="dense"
+                    name="database_name"
+                    label="Database Name"
+                    type="text"
+                    fullWidth
+                    variant="outlined"
+                    value={newDatabaseInfo.database_name}
+                    onChange={handleAddDatabaseChange}
+                    required
+                    error={error && !newDatabaseInfo.database_name}
+                    helperText={error && !newDatabaseInfo.database_name ? 'Database name is required' : ''}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    margin="dense"
+                    name="username"
+                    label="Username"
+                    type="text"
+                    fullWidth
+                    variant="outlined"
+                    value={newDatabaseInfo.username}
+                    onChange={handleAddDatabaseChange}
+                    required
+                    error={error && !newDatabaseInfo.username}
+                    helperText={error && !newDatabaseInfo.username ? 'Username is required' : ''}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    margin="dense"
+                    name="password"
+                    label="Password"
+                    type="password"
+                    fullWidth
+                    variant="outlined"
+                    value={newDatabaseInfo.password}
+                    onChange={handleAddDatabaseChange}
+                    required
+                    error={error && !newDatabaseInfo.password}
+                    helperText={error && !newDatabaseInfo.password ? 'Password is required' : ''}
+                  />
+                </Grid>
+              </Grid>
+            </DialogContent>
+            <DialogActions sx={{ px: 3, pb: 2 }}>
+              <Button 
+                onClick={() => {
+                  setAddDialogOpen(false);
+                  resetNewDatabaseForm();
+                }} 
+                color="inherit"
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleAddDatabaseSubmit} 
+                variant="contained"
+                disabled={loading}
+              >
+                {loading ? <CircularProgress size={24} /> : 'Add Database'}
+              </Button>
+            </DialogActions>
+          </Dialog>
+
+          {/* Database Options Dialog */}
+          <Dialog
+            open={optionsDialogOpen}
+            onClose={() => setOptionsDialogOpen(false)}
+            fullWidth
+            maxWidth="sm"
+          >
+            <DialogTitle>{selectedDatabase?.name || 'Database Options'}</DialogTitle>
+            <DialogContent>
+              <Typography variant="body1" sx={{ mb: 2 }}>
+                What would you like to do with this database?
+              </Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={12}>
+                  <Button
+                    fullWidth
+                    variant="outlined"
+                    startIcon={<EditIcon />}
+                    onClick={handleUpdateMetadata}
+                    sx={{ py: 2, justifyContent: 'flex-start' }}
+                  >
+                    Update Database Metadata
+                  </Button>
+                </Grid>
+                <Grid item xs={12}>
+                  <Button
+                    fullWidth
+                    variant="outlined"
+                    startIcon={<QueryStatsIcon />}
+                    onClick={handleQueryDatabase}
+                    sx={{ py: 2, justifyContent: 'flex-start' }}
+                  >
+                    Query Database
+                  </Button>
+                </Grid>
+              </Grid>
+            </DialogContent>
+            <DialogActions sx={{ px: 3, pb: 2 }}>
+              <Button onClick={() => setOptionsDialogOpen(false)} color="inherit">
+                Cancel
+              </Button>
+            </DialogActions>
+          </Dialog>
+
+          {/* Snackbar for notifications */}
+          <Snackbar
+            open={snackbarOpen}
+            autoHideDuration={4000}
+            onClose={() => setSnackbarOpen(false)}
+            anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+          >
+            <Alert 
+              onClose={() => setSnackbarOpen(false)} 
+              severity={snackbarSeverity} 
+              variant="filled"
+              sx={{ width: '100%' }}
+            >
+              {snackbarMessage}
+            </Alert>
+          </Snackbar>
+        </Paper>
+      </Container>
+    </>
   );
 }
 

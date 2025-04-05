@@ -34,10 +34,11 @@ import LogoutIcon from '@mui/icons-material/Logout';
 import DatabaseIcon from '@mui/icons-material/Storage';
 import HomeIcon from '@mui/icons-material/Home';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { useNavigate, useLocation } from 'react-router-dom';
 import api from '../api';
 import LoadingIndicator from '../components/LoadingIndicator';
-import Layout from '../components/Layout';
+import Navbar from '../components/Navbar';
 
 function Sessions() {
   const navigate = useNavigate();
@@ -173,61 +174,36 @@ function Sessions() {
 
   if (loading) {
     return (
-      <Layout>
-        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+      <>
+        <Navbar />
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh' }}>
           <LoadingIndicator />
           <Typography variant="h6" sx={{ ml: 2 }}>
             Loading your sessions...
           </Typography>
         </Box>
-      </Layout>
+      </>
     );
   }
 
   return (
-    <Layout>
+    <>
+      <Navbar />
       <Container maxWidth="md" sx={{ pt: 4 }}>
         <Paper elevation={3} sx={{ p: 4, borderRadius: 2 }}>
-          {/* Breadcrumb Navigation */}
-          <Breadcrumbs separator={<NavigateNextIcon fontSize="small" />} aria-label="breadcrumb" sx={{ mb: 3 }}>
-            <Link
-              underline="hover"
-              sx={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}
-              color="inherit"
-              onClick={() => navigate('/')}
+          {/* Back button and title */}
+          <Box display="flex" alignItems="center" mb={3}>
+            <IconButton 
+              onClick={() => navigate('/databases')} 
+              color="primary" 
+              aria-label="back to databases" 
+              sx={{ mr: 2 }}
             >
-              <HomeIcon sx={{ mr: 0.5 }} fontSize="inherit" />
-              Databases
-            </Link>
-            <Typography color="text.primary" sx={{ display: 'flex', alignItems: 'center' }}>
-              <DatabaseIcon sx={{ mr: 0.5 }} fontSize="inherit" />
-              {selectedDatabase?.name || 'Current Database'}
-            </Typography>
-          </Breadcrumbs>
-
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
+              <ArrowBackIcon />
+            </IconButton>
             <Typography variant="h4" component="h1" gutterBottom sx={{ color: 'primary.main' }}>
               Query Sessions
             </Typography>
-            
-            <Box sx={{ display: 'flex', gap: 2 }}>
-              <Button
-                variant="contained"
-                startIcon={<AddIcon />}
-                onClick={() => setCreateDialogOpen(true)}
-                sx={{ py: 1.5, px: 3, borderRadius: 2 }}
-              >
-                New Session
-              </Button>
-              
-              <Button
-                variant="outlined"
-                onClick={() => navigate('/')}
-                sx={{ py: 1.5, px: 3, borderRadius: 2 }}
-              >
-                Back to Databases
-              </Button>
-            </Box>
           </Box>
 
           {error && (
@@ -235,6 +211,17 @@ function Sessions() {
               {error}
             </Alert>
           )}
+
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 4 }}>
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={() => setCreateDialogOpen(true)}
+              sx={{ py: 1.5, px: 3, borderRadius: 2 }}
+            >
+              New Session
+            </Button>
+          </Box>
 
           <Box sx={{ bgcolor: 'background.paper', p: 2, mb: 3, borderRadius: 1, border: '1px solid', borderColor: 'divider' }}>
             <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', color: 'text.secondary' }}>
@@ -408,7 +395,7 @@ function Sessions() {
           {snackbarMessage}
         </Alert>
       </Snackbar>
-    </Layout>
+    </>
   );
 }
 
