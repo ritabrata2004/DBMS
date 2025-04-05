@@ -139,7 +139,16 @@ function Home() {
             console.log("Generated SQL:", generatedSql);
             
             // Step 2: Execute the generated SQL
+            console.log("Executing SQL on database ID:", databaseId);
             const executionResponse = await api.executeSqlQuery(databaseId, generatedSql);
+            
+            // DEBUG: Log the complete response structure
+            console.log("Query execution response (full):", executionResponse);
+            console.log("Query execution data:", executionResponse.data);
+            console.log("Query execution status:", executionResponse.data.status);
+            console.log("Query execution success:", executionResponse.data.success);
+            console.log("Query execution columns:", executionResponse.data.columns);
+            console.log("Query execution rows:", executionResponse.data.rows);
             
             // Format the response to display the generated SQL and the results
             const formattedResponse = `
@@ -151,6 +160,8 @@ ${generatedSql}
 **Results:**
 ${formatQueryResults(executionResponse.data)}
 `;
+            
+            console.log("Formatted response:", formattedResponse);
             
             // Step 3: Save the query and response to the current session
             await api.addQueryToSession(currentSessionId, query, formattedResponse);
@@ -204,22 +215,40 @@ ${formatQueryResults(executionResponse.data)}
 
     // Helper function to format query results for display
     const formatQueryResults = (results) => {
-        if (!results || !results.data || results.data.length === 0) {
+        console.log("Formatting query results:", results);
+        
+        if (!results) {
+            console.log("Results is null or undefined");
+            return "No results available.";
+        }
+        
+        if (!results.success) {
+            console.log("Query execution reported failure:", results.status);
+            return `Query failed: ${results.status}`;
+        }
+        
+        if (!results.rows || results.rows.length === 0) {
+            console.log("No rows in results");
             return "No results found.";
         }
         
-        // Create a table header from the first row keys
-        const headers = Object.keys(results.data[0]);
+        console.log("Processing rows:", results.rows);
+        console.log("Column headers:", results.columns);
+        
+        // Create a table header from columns
+        const headers = results.columns;
         
         // Format as markdown table
         let tableMarkdown = `| ${headers.join(' | ')} |\n`;
         tableMarkdown += `| ${headers.map(() => '---').join(' | ')} |\n`;
         
         // Add table rows
-        results.data.forEach(row => {
-            tableMarkdown += `| ${headers.map(h => String(row[h] || '').replace(/\n/g, ' ')).join(' | ')} |\n`;
+        results.rows.forEach(row => {
+            console.log("Processing row:", row);
+            tableMarkdown += `| ${row.map(cell => (cell === null ? 'NULL' : String(cell).replace(/\n/g, ' '))).join(' | ')} |\n`;
         });
         
+        console.log("Generated markdown table:", tableMarkdown);
         return tableMarkdown;
     };
 
