@@ -1,4 +1,5 @@
 # Python
+db.sqlite3
 __pycache__/
 *.py[cod]
 *$py.class
@@ -87,3 +88,4 @@ coverage/
 # Environment variables
 .env.*
 !.env.example
+backend/db.sqlite3
