@@ -89,3 +89,22 @@ class QueryCreateView(APIView):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         except Session.DoesNotExist:
             return Response({"detail": "Session not found"}, status=status.HTTP_404_NOT_FOUND)
+
+
+class QueryDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def delete(self, request, session_id, query_id):
+        try:
+            # First check if the session belongs to the user
+            session = Session.objects.get(pk=session_id, user=request.user)
+            
+            try:
+                # Find the query within this session
+                query = Query.objects.get(pk=query_id, session=session)
+                query.delete()
+                return Response(status=status.HTTP_204_NO_CONTENT)
+            except Query.DoesNotExist:
+                return Response({"detail": "Query not found"}, status=status.HTTP_404_NOT_FOUND)
+        except Session.DoesNotExist:
+            return Response({"detail": "Session not found"}, status=status.HTTP_404_NOT_FOUND)

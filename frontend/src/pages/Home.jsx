@@ -17,7 +17,12 @@ import {
   InputAdornment,
   Avatar,
   Fade,
-  alpha
+  alpha,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
 } from "@mui/material";
 import SendIcon from '@mui/icons-material/Send';
 import LogoutIcon from '@mui/icons-material/Logout';
@@ -25,6 +30,8 @@ import MenuIcon from '@mui/icons-material/Menu';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
 import PersonIcon from '@mui/icons-material/Person';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import DeleteIcon from '@mui/icons-material/Delete';
 import { useNavigate, useLocation } from 'react-router-dom';
 import SessionSelector from "../components/SessionSelector";
 import LoadingIndicator from "../components/LoadingIndicator";
@@ -294,6 +301,70 @@ ${formatQueryResults(executionResponse.data)}
         return sql.replace(/```sql\s*/g, '').replace(/```\s*$/g, '').replace(/^```\s*/g, '').replace(/\s*```$/g, '').trim();
     };
 
+    // Helper function to generate a compact summary of query results
+    const generateResultsSummary = (responseText) => {
+        if (!responseText) return { previewText: "No results available", rowCount: 0 };
+        
+        // Parse the results from markdown
+        const { sql, results } = parseResultsFromMarkdown(responseText);
+        
+        // If there's an error or no results
+        if (!results || !results.success) {
+            const errorMatch = responseText.match(/Query failed:\s*(.*)/);
+            const errorMessage = errorMatch ? errorMatch[1].trim() : "Query failed";
+            return { previewText: errorMessage, rowCount: 0, hasError: true };
+        }
+        
+        // If there are no rows
+        if (!results.rows || results.rows.length === 0) {
+            return { previewText: "Query executed successfully. No records found.", rowCount: 0 };
+        }
+        
+        // Get row count
+        const rowCount = results.rows.length;
+        
+        // Generate a more detailed preview with column names and values from first few rows
+        let previewText = "";
+        
+        // Show SQL preview first (truncated)
+        if (sql) {
+            const sqlPreview = sql.length > 70 ? sql.substring(0, 70) + "..." : sql;
+            previewText += `SQL: ${sqlPreview}\n\n`;
+        }
+        
+        // Add row count information
+        previewText += `Results: ${rowCount} ${rowCount === 1 ? 'row' : 'rows'} returned\n\n`;
+        
+        // Show column headers (up to 4)
+        const maxColumnsToShow = Math.min(4, results.columns.length);
+        const columnHeaders = results.columns.slice(0, maxColumnsToShow);
+        if (results.columns.length > maxColumnsToShow) {
+            columnHeaders.push("...");
+        }
+        previewText += `${columnHeaders.join(" | ")}\n`;
+        
+        // Show first 2 rows of data
+        const rowsToShow = Math.min(2, results.rows.length);
+        for (let i = 0; i < rowsToShow; i++) {
+            const rowValues = results.rows[i].slice(0, maxColumnsToShow).map(val => 
+                val === null ? 'NULL' : String(val).length > 15 ? String(val).substring(0, 15) + "..." : String(val)
+            );
+            
+            if (results.columns.length > maxColumnsToShow) {
+                rowValues.push("...");
+            }
+            
+            previewText += `${rowValues.join(" | ")}\n`;
+        }
+        
+        // If there are more rows, indicate it
+        if (results.rows.length > 2) {
+            previewText += `... and ${results.rows.length - 2} more rows`;
+        }
+        
+        return { previewText, rowCount, sql };
+    };
+
     // Helper function to format query results for display
     const formatQueryResults = (results) => {
         console.log("Formatting query results:", results);
@@ -422,6 +493,20 @@ ${formatQueryResults(executionResponse.data)}
         
         // Show the popup
         setShowResultPopup(true);
+    };
+
+    // Delete a query and its response from the session
+    const handleDeleteQuery = async (queryId) => {
+        if (!currentSessionId) return;
+        
+        try {
+            await api.deleteQueryFromSession(currentSessionId, queryId);
+            
+            // Update the current session by reloading it
+            loadSession(currentSessionId);
+        } catch (error) {
+            console.error("Error deleting query:", error);
+        }
     };
 
     if (initialLoading) {
@@ -907,135 +992,168 @@ ${formatQueryResults(executionResponse.data)}
                                 </Box>
                             </Box>
                         ) : (
-                            currentSession.queries.map((item, index) => (
-                                <Fade in={true} key={index} timeout={300} style={{ transitionDelay: `${index * 50}ms` }}>
-                                    <Box sx={{ width: '100%', my: 2 }}>
-                                        {/* User message */}
-                                        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1.5, alignItems: 'flex-start' }}>
-                                            <Box sx={{ maxWidth: { xs: '80%', md: '70%' } }}>
-                                                <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 0.5, mr: 1 }}>
-                                                    <Typography variant="caption" sx={{ color: alpha(theme.palette.text.secondary, 0.8) }}>
-                                                        You
-                                                    </Typography>
+                            currentSession.queries.map((item, index) => {
+                                const { previewText, rowCount, hasError } = generateResultsSummary(item.response);
+                                return (
+                                    <Fade in={true} key={index} timeout={300} style={{ transitionDelay: `${index * 50}ms` }}>
+                                        <Box sx={{ width: '100%', my: 2 }}>
+                                            {/* User message */}
+                                            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1.5, alignItems: 'flex-start' }}>
+                                                <Box sx={{ maxWidth: { xs: '80%', md: '70%' } }}>
+                                                    <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 0.5, mr: 1 }}>
+                                                        <Typography variant="caption" sx={{ color: alpha(theme.palette.text.secondary, 0.8) }}>
+                                                            You
+                                                        </Typography>
+                                                    </Box>
+                                                    <Paper 
+                                                        elevation={0}
+                                                        sx={{
+                                                            p: 2,
+                                                            color: 'white',
+                                                            backgroundImage: 'linear-gradient(45deg, #5581D9 10%, #6596EB 90%)',
+                                                            borderRadius: '16px 16px 4px 16px',
+                                                            boxShadow: '0 2px 12px rgba(101, 150, 235, 0.3)',
+                                                            overflowWrap: 'break-word',
+                                                            wordBreak: 'break-word'
+                                                        }}
+                                                    >
+                                                        <Typography variant="body1">{item.prompt}</Typography>
+                                                    </Paper>
                                                 </Box>
-                                                <Paper 
-                                                    elevation={0}
-                                                    sx={{
-                                                        p: 2,
-                                                        color: 'white',
-                                                        backgroundImage: 'linear-gradient(45deg, #5581D9 10%, #6596EB 90%)',
-                                                        borderRadius: '16px 16px 4px 16px',
-                                                        boxShadow: '0 2px 12px rgba(101, 150, 235, 0.3)',
-                                                        overflowWrap: 'break-word',
-                                                        wordBreak: 'break-word'
-                                                    }}
+                                                <Avatar 
+                                                    sx={{ 
+                                                        ml: 1, 
+                                                        bgcolor: theme.palette.primary.dark,
+                                                        boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
+                                                    }} 
+                                                    alt="User"
                                                 >
-                                                    <Typography variant="body1">{item.prompt}</Typography>
-                                                </Paper>
+                                                    <PersonIcon />
+                                                </Avatar>
                                             </Box>
-                                            <Avatar 
-                                                sx={{ 
-                                                    ml: 1, 
-                                                    bgcolor: theme.palette.primary.dark,
-                                                    boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
-                                                }} 
-                                                alt="User"
-                                            >
-                                                <PersonIcon />
-                                            </Avatar>
-                                        </Box>
-                                        
-                                        {/* System message */}
-                                        <Box sx={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'flex-start' }}>
-                                            <Avatar 
-                                                sx={{ 
-                                                    mr: 1, 
-                                                    bgcolor: theme.palette.secondary.dark,
-                                                    boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
-                                                }} 
-                                                alt="AI"
-                                            >
-                                                <SmartToyIcon />
-                                            </Avatar>
-                                            <Box sx={{ maxWidth: { xs: '85%', md: '75%' } }}>
-                                                <Box sx={{ display: 'flex', mb: 0.5, ml: 1 }}>
-                                                    <Typography variant="caption" sx={{ color: alpha(theme.palette.text.secondary, 0.8) }}>
-                                                        AI Assistant
-                                                    </Typography>
-                                                </Box>
-                                                <Paper 
-                                                    elevation={0}
-                                                    onClick={() => showPreviousQueryResults(item)}
-                                                    sx={{
-                                                        p: 2,
-                                                        color: theme.palette.text.primary,
-                                                        bgcolor: alpha(theme.palette.background.paper, 0.7),
-                                                        backdropFilter: 'blur(10px)',
-                                                        borderRadius: '16px 16px 16px 4px',
-                                                        border: '1px solid',
-                                                        borderColor: alpha(theme.palette.divider, 0.4),
-                                                        overflowWrap: 'break-word',
-                                                        wordWrap: 'break-word',
-                                                        boxShadow: '0 2px 12px rgba(0,0,0,0.1)',
-                                                        cursor: 'pointer',
-                                                        transition: 'all 0.2s ease-in-out',
-                                                        '&:hover': {
-                                                            bgcolor: alpha(theme.palette.background.paper, 0.85),
-                                                            boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
-                                                            transform: 'translateY(-2px)',
-                                                        }
-                                                    }}
+                                            
+                                            {/* System message */}
+                                            <Box sx={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'flex-start' }}>
+                                                <Avatar 
+                                                    sx={{ 
+                                                        mr: 1, 
+                                                        bgcolor: theme.palette.secondary.dark,
+                                                        boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
+                                                    }} 
+                                                    alt="AI"
                                                 >
-                                                    <Typography 
-                                                        variant="body1" 
-                                                        sx={{ 
-                                                            whiteSpace: 'pre-wrap',
-                                                            '& code': {
-                                                                backgroundColor: alpha(theme.palette.background.default, 0.5),
-                                                                fontFamily: 'monospace',
-                                                                p: 0.5,
-                                                                borderRadius: 1,
-                                                            },
-                                                            '& table': {
-                                                                borderCollapse: 'collapse',
-                                                                width: '100%',
-                                                                my: 1.5,
-                                                                overflowX: 'auto',
-                                                                display: 'block',
-                                                            },
-                                                            '& th': {
-                                                                borderBottom: `1px solid ${alpha(theme.palette.divider, 0.8)}`,
-                                                                p: 1,
-                                                                textAlign: 'left',
-                                                                fontWeight: 500,
-                                                                color: theme.palette.primary.light,
-                                                                backgroundColor: alpha(theme.palette.background.default, 0.5),
-                                                            },
-                                                            '& td': {
-                                                                p: 1,
-                                                                borderBottom: `1px solid ${alpha(theme.palette.divider, 0.3)}`,
+                                                    <SmartToyIcon />
+                                                </Avatar>
+                                                <Box sx={{ maxWidth: { xs: '85%', md: '75%' } }}>
+                                                    <Box sx={{ display: 'flex', mb: 0.5, ml: 1 }}>
+                                                        <Typography variant="caption" sx={{ color: alpha(theme.palette.text.secondary, 0.8) }}>
+                                                            AI Assistant
+                                                        </Typography>
+                                                    </Box>
+                                                    <Paper 
+                                                        elevation={0}
+                                                        sx={{
+                                                            p: 2,
+                                                            color: theme.palette.text.primary,
+                                                            bgcolor: alpha(theme.palette.background.paper, 0.7),
+                                                            backdropFilter: 'blur(10px)',
+                                                            borderRadius: '16px 16px 16px 4px',
+                                                            border: '1px solid',
+                                                            borderColor: alpha(theme.palette.divider, 0.4),
+                                                            overflowWrap: 'break-word',
+                                                            wordWrap: 'break-word',
+                                                            boxShadow: '0 2px 12px rgba(0,0,0,0.1)',
+                                                            cursor: 'pointer',
+                                                            transition: 'all 0.2s ease-in-out',
+                                                            '&:hover': {
+                                                                bgcolor: alpha(theme.palette.background.paper, 0.85),
+                                                                boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
+                                                                transform: 'translateY(-2px)',
                                                             }
                                                         }}
                                                     >
-                                                        {item.response}
-                                                    </Typography>
-                                                    <Typography 
-                                                        variant="caption" 
-                                                        sx={{ 
-                                                            display: 'block', 
-                                                            mt: 1.5, 
-                                                            textAlign: 'right',
-                                                            color: alpha(theme.palette.text.secondary, 0.6)
-                                                        }}
-                                                    >
-                                                        {new Date(item.created_at).toLocaleString()}
-                                                    </Typography>
-                                                </Paper>
+                                                        <Typography 
+                                                            variant="body1" 
+                                                            sx={{ 
+                                                                whiteSpace: 'pre-wrap',
+                                                                '& code': {
+                                                                    backgroundColor: alpha(theme.palette.background.default, 0.5),
+                                                                    fontFamily: 'monospace',
+                                                                    p: 0.5,
+                                                                    borderRadius: 1,
+                                                                },
+                                                                '& table': {
+                                                                    borderCollapse: 'collapse',
+                                                                    width: '100%',
+                                                                    my: 1.5,
+                                                                    overflowX: 'auto',
+                                                                    display: 'block',
+                                                                },
+                                                                '& th': {
+                                                                    borderBottom: `1px solid ${alpha(theme.palette.divider, 0.8)}`,
+                                                                    p: 1,
+                                                                    textAlign: 'left',
+                                                                    fontWeight: 500,
+                                                                    color: theme.palette.primary.light,
+                                                                    backgroundColor: alpha(theme.palette.background.default, 0.5),
+                                                                },
+                                                                '& td': {
+                                                                    p: 1,
+                                                                    borderBottom: `1px solid ${alpha(theme.palette.divider, 0.3)}`,
+                                                                }
+                                                            }}
+                                                        >
+                                                            {previewText}
+                                                        </Typography>
+                                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1.5 }}>
+                                                            <Typography 
+                                                                variant="caption" 
+                                                                sx={{ 
+                                                                    color: alpha(theme.palette.text.secondary, 0.6)
+                                                                }}
+                                                            >
+                                                                {new Date(item.created_at).toLocaleString()}
+                                                            </Typography>
+                                                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                                                <Button 
+                                                                    size="small" 
+                                                                    variant="outlined" 
+                                                                    color="primary" 
+                                                                    onClick={() => showPreviousQueryResults(item)}
+                                                                    startIcon={<VisibilityIcon />}
+                                                                    sx={{
+                                                                        borderRadius: '8px',
+                                                                        fontWeight: 500,
+                                                                        px: 2,
+                                                                        py: 0.5,
+                                                                        ml: 2,
+                                                                        borderWidth: '1.5px',
+                                                                        '&:hover': {
+                                                                            borderWidth: '1.5px',
+                                                                            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
+                                                                            transform: 'translateY(-2px)',
+                                                                        }
+                                                                    }}
+                                                                >
+                                                                    View Details
+                                                                </Button>
+                                                                <IconButton 
+                                                                    size="small" 
+                                                                    color="error" 
+                                                                    onClick={() => handleDeleteQuery(item.id)}
+                                                                    sx={{ ml: 1 }}
+                                                                >
+                                                                    <DeleteIcon />
+                                                                </IconButton>
+                                                            </Box>
+                                                        </Box>
+                                                    </Paper>
+                                                </Box>
                                             </Box>
                                         </Box>
-                                    </Box>
-                                </Fade>
-                            ))
+                                    </Fade>
+                                );
+                            })
                         )}
                         <div ref={messagesEndRef} />
                     </Box>
