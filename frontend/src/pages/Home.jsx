@@ -29,6 +29,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import SessionSelector from "../components/SessionSelector";
 import LoadingIndicator from "../components/LoadingIndicator";
 import Navbar from "../components/Navbar";
+import PopupResult from "../components/PopupResult";
 
 function Home() {
     const theme = useTheme();
@@ -38,6 +39,12 @@ function Home() {
     const [response, setResponse] = useState("");
     const [loading, setLoading] = useState(false);
     const [initialLoading, setInitialLoading] = useState(true);
+    const [generatedSql, setGeneratedSql] = useState("");
+    const [showSqlControls, setShowSqlControls] = useState(false);
+    const [showResultPopup, setShowResultPopup] = useState(false);
+    const [queryResult, setQueryResult] = useState(null);
+    const [currentNaturalQuery, setCurrentNaturalQuery] = useState(""); // New state for storing natural language query
+    const [historicQueryData, setHistoricQueryData] = useState(null); // Store historic query data for popup
     const navigate = useNavigate();
     const messagesEndRef = useRef(null);
     const messagesContainerRef = useRef(null);
@@ -135,56 +142,36 @@ function Home() {
                 throw new Error("No database associated with this session");
             }
             
-            // Step 1: Generate SQL from natural language query
-            const sqlGenResponse = await api.generateSqlFromNL(query, databaseId);
+            // Store the current query for later use
+            const currentQuery = query;
+            
+            // Generate SQL from natural language query
+            const sqlGenResponse = await api.generateSqlFromNL(currentQuery, databaseId);
             
             // Access the correct field name 'sql_query' instead of 'sql'
-            let generatedSql = sqlGenResponse.data.sql_query;
+            let generatedSqlQuery = sqlGenResponse.data.sql_query;
             
             // Clean SQL query by removing markdown code blocks if present
-            generatedSql = cleanSqlQuery(generatedSql);
+            generatedSqlQuery = cleanSqlQuery(generatedSqlQuery);
             
-            console.log("Generated SQL:", generatedSql);
+            console.log("Generated SQL:", generatedSqlQuery);
             
-            // Step 2: Execute the generated SQL
-            console.log("Executing SQL on database ID:", databaseId);
-            const executionResponse = await api.executeSqlQuery(databaseId, generatedSql);
+            // Set the generated SQL and show controls
+            setGeneratedSql(generatedSqlQuery);
+            setShowSqlControls(true);
             
-            console.log("Query execution success:", executionResponse.data.success);
-            
-            // Format the response to display the generated SQL and the results
-            const formattedResponse = `
-**Generated SQL:**
-\`\`\`
-${generatedSql}
-\`\`\`
-
-**Results:**
-${formatQueryResults(executionResponse.data)}
-`;
-            
-            console.log("Formatted response:", formattedResponse);
-            
-            // Step 3: Save the query and response to the current session
-            await api.addQueryToSession(currentSessionId, query, formattedResponse);
-            
-            // Update the local state to show the response
-            setResponse(formattedResponse);
+            // Store the natural language query for execution
+            setCurrentNaturalQuery(currentQuery);
             
             // Clear the input field
             setQuery("");
-            
-            // Reload the session to get the updated queries
-            loadSession(currentSessionId);
         } catch (error) {
-            console.error("Error processing query:", error);
+            console.error("Error generating SQL query:", error);
             
             // Create an error message that's user-friendly
-            let errorMessage = "An error occurred while processing your query.";
+            let errorMessage = "An error occurred while generating the SQL query.";
             
             if (error.response) {
-                // The request was made and the server responded with a status code
-                // that falls out of the range of 2xx
                 if (error.response.data && error.response.data.detail) {
                     errorMessage = `Error: ${error.response.data.detail}`;
                 } else if (error.response.data && error.response.data.error) {
@@ -205,6 +192,98 @@ ${formatQueryResults(executionResponse.data)}
         } finally {
             setLoading(false);
         }
+    };
+    
+    // Execute the generated SQL query
+    const executeGeneratedSql = async () => {
+        if (!generatedSql || !currentSessionId) return;
+        
+        setLoading(true);
+        try {
+            // Get the database ID from the current session
+            const sessionResponse = await api.getSession(currentSessionId);
+            const databaseId = sessionResponse.data.database_id;
+            
+            // Execute the generated SQL
+            console.log("Executing SQL on database ID:", databaseId);
+            const executionResponse = await api.executeSqlQuery(databaseId, generatedSql);
+            
+            console.log("Query execution success:", executionResponse.data.success);
+            
+            // Store the query results
+            setQueryResult(executionResponse.data);
+            
+            // Format the response to display the generated SQL and the results
+            const formattedResponse = `
+**Generated SQL:**
+\`\`\`
+${generatedSql}
+\`\`\`
+
+**Results:**
+${formatQueryResults(executionResponse.data)}
+`;
+            
+            // Save the query and response to the current session
+            // Use the stored natural language query instead of the empty query state
+            await api.addQueryToSession(currentSessionId, currentNaturalQuery, formattedResponse);
+            
+            // Update the local state to show the response
+            setResponse(formattedResponse);
+            
+            // Show the result popup
+            setShowResultPopup(true);
+            
+            // Reset the SQL controls
+            setShowSqlControls(false);
+            
+            // Reload the session to get the updated queries
+            loadSession(currentSessionId);
+        } catch (error) {
+            console.error("Error executing query:", error);
+            
+            // Create an error message that's user-friendly
+            let errorMessage = "An error occurred while executing the SQL query.";
+            
+            if (error.response) {
+                if (error.response.data && error.response.data.detail) {
+                    errorMessage = `Error: ${error.response.data.detail}`;
+                } else if (error.response.data && error.response.data.error) {
+                    errorMessage = `Error: ${error.response.data.error}`;
+                } else {
+                    errorMessage = `Error: ${error.response.status} - ${error.response.statusText}`;
+                }
+            } else if (error.message) {
+                errorMessage = `Error: ${error.message}`;
+            }
+            
+            // Save the error message as a response
+            await api.addQueryToSession(currentSessionId, query, errorMessage);
+            setResponse(errorMessage);
+            
+            // Reload the session to get the updated queries
+            loadSession(currentSessionId);
+        } finally {
+            setLoading(false);
+        }
+    };
+    
+    // Discard the generated SQL
+    const discardGeneratedSql = () => {
+        setGeneratedSql("");
+        setShowSqlControls(false);
+    };
+    
+    // Copy text to clipboard
+    const copyToClipboard = (text) => {
+        navigator.clipboard.writeText(text)
+            .then(() => {
+                // Could show a temporary "Copied!" notification here
+                console.log("Text copied to clipboard");
+            })
+            .catch(err => {
+                console.error("Could not copy text: ", err);
+            });
     };
     
     // Helper function to clean SQL query by removing markdown code block markers
@@ -252,6 +331,97 @@ ${formatQueryResults(executionResponse.data)}
         
         console.log("Generated markdown table:", tableMarkdown);
         return tableMarkdown;
+    };
+
+    // Helper function to extract SQL from previous response markdown
+    const extractSqlFromMarkdown = (responseText) => {
+        if (!responseText) return '';
+        
+        // Look for SQL code block
+        const sqlBlockRegex = /```(?:sql)?\s*([\s\S]*?)```/;
+        const match = responseText.match(sqlBlockRegex);
+        
+        if (match && match[1]) {
+            return match[1].trim();
+        }
+        
+        return '';
+    };
+    
+    // Helper function to parse previous query results from markdown
+    const parseResultsFromMarkdown = (responseText) => {
+        if (!responseText) return null;
+        
+        // Extract SQL
+        const sql = extractSqlFromMarkdown(responseText);
+        
+        // Create a mock result object that matches the expected structure
+        const mockResult = {
+            success: true,
+            columns: [],
+            rows: [],
+            execution_time: null
+        };
+        
+        // Try to find the results section
+        const resultsRegex = /\*\*Results:\*\*([\s\S]*?)(?:$|(?:\n\n))/;
+        const resultsMatch = responseText.match(resultsRegex);
+        
+        if (resultsMatch && resultsMatch[1]) {
+            const resultsText = resultsMatch[1].trim();
+            
+            // Check for error messages
+            if (resultsText.includes('Query failed:') || resultsText.includes('No results')) {
+                mockResult.success = false;
+                mockResult.status = resultsText.replace('Query failed:', '').trim();
+                return { sql, results: mockResult };
+            }
+            
+            // Try to parse markdown table
+            const tableRegex = /\|\s*(.*?)\s*\|\n\|\s*[-:\s|]*\|\n([\s\S]*)/;
+            const tableMatch = resultsText.match(tableRegex);
+            
+            if (tableMatch) {
+                // Parse headers
+                mockResult.columns = tableMatch[1].split('|').map(header => header.trim());
+                
+                // Parse rows
+                const rowsText = tableMatch[2];
+                const rowLines = rowsText.split('\n').filter(line => line.trim().startsWith('|'));
+                
+                mockResult.rows = rowLines.map(line => {
+                    // Remove first and last | and split by |
+                    const cells = line.trim()
+                        .substring(1, line.length - 1)
+                        .split('|')
+                        .map(cell => {
+                            const trimmed = cell.trim();
+                            return trimmed === 'NULL' ? null : trimmed;
+                        });
+                    
+                    return cells;
+                });
+                
+                return { sql, results: mockResult };
+            }
+        }
+        
+        return { sql, results: null };
+    };
+    
+    // Show a previous query's results in the popup
+    const showPreviousQueryResults = (item) => {
+        const { sql, results } = parseResultsFromMarkdown(item.response);
+        
+        // Set up the data for the popup
+        setHistoricQueryData({
+            sql,
+            results,
+            naturalQuery: item.prompt  // Make sure this contains the original natural language query
+        });
+        
+        // Show the popup
+        setShowResultPopup(true);
     };
 
     if (initialLoading) {
@@ -589,6 +759,105 @@ ${formatQueryResults(executionResponse.data)}
                             },
                         }}
                     >
+                        {/* SQL Controls - Show when SQL is generated but not yet executed */}
+                        {showSqlControls && (
+                            <Fade in={showSqlControls} timeout={300}>
+                                <Paper 
+                                    elevation={3}
+                                    sx={{
+                                        p: 3,
+                                        mt: 2,
+                                        mb: 3,
+                                        borderRadius: 2,
+                                        border: '1px solid',
+                                        borderColor: alpha(theme.palette.primary.main, 0.2),
+                                        bgcolor: alpha(theme.palette.background.paper, 0.8),
+                                        backdropFilter: 'blur(10px)',
+                                        position: 'sticky',
+                                        top: 10,
+                                        zIndex: 10,
+                                        boxShadow: `0 4px 20px ${alpha(theme.palette.common.black, 0.15)}`
+                                    }}
+                                >
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+                                        <Typography variant="h6" fontWeight={600} sx={{
+                                            color: theme.palette.text.primary,
+                                        }}>
+                                            Generated SQL Query
+                                        </Typography>
+                                        <IconButton 
+                                            size="small" 
+                                            onClick={() => copyToClipboard(generatedSql)}
+                                            title="Copy SQL to clipboard"
+                                            sx={{ 
+                                                color: theme.palette.primary.main,
+                                                '&:hover': {
+                                                    backgroundColor: alpha(theme.palette.primary.main, 0.1),
+                                                }
+                                            }}
+                                        >
+                                            <Box component="svg" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="18" height="18">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                            </Box>
+                                        </IconButton>
+                                    </Box>
+                                    
+                                    <Paper 
+                                        elevation={0}
+                                        sx={{
+                                            p: 2,
+                                            mb: 3,
+                                            borderRadius: 1,
+                                            bgcolor: alpha(theme.palette.background.default, 0.7),
+                                            border: '1px solid',
+                                            borderColor: alpha(theme.palette.divider, 0.6),
+                                            overflow: 'auto',
+                                            maxHeight: '200px',
+                                            fontFamily: 'monospace',
+                                            fontSize: '0.9rem',
+                                            whiteSpace: 'pre-wrap',
+                                            wordBreak: 'break-word'
+                                        }}
+                                    >
+                                        {generatedSql}
+                                    </Paper>
+                                    
+                                    <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
+                                        <Button 
+                                            variant="outlined" 
+                                            color="error"
+                                            onClick={discardGeneratedSql}
+                                            sx={{
+                                                borderRadius: '8px',
+                                                fontWeight: 500,
+                                                px: 3
+                                            }}
+                                        >
+                                            Discard
+                                        </Button>
+                                        <Button 
+                                            variant="contained" 
+                                            color="primary"
+                                            onClick={executeGeneratedSql}
+                                            sx={{
+                                                borderRadius: '8px',
+                                                fontWeight: 500,
+                                                px: 3,
+                                                background: 'linear-gradient(45deg, #5581D9 10%, #6596EB 90%)',
+                                                boxShadow: '0 2px 10px rgba(101, 150, 235, 0.3)',
+                                                '&:hover': {
+                                                    background: 'linear-gradient(45deg, #4B74C7 10%, #5889DB 90%)',
+                                                    boxShadow: '0 4px 15px rgba(101, 150, 235, 0.4)',
+                                                }
+                                            }}
+                                        >
+                                            Execute Query
+                                        </Button>
+                                    </Box>
+                                </Paper>
+                            </Fade>
+                        )}
+
                         {!currentSession?.queries || currentSession.queries.length === 0 ? (
                             <Box sx={{
                                 display: 'flex',
@@ -696,6 +965,7 @@ ${formatQueryResults(executionResponse.data)}
                                                 </Box>
                                                 <Paper 
                                                     elevation={0}
+                                                    onClick={() => showPreviousQueryResults(item)}
                                                     sx={{
                                                         p: 2,
                                                         color: theme.palette.text.primary,
@@ -706,7 +976,14 @@ ${formatQueryResults(executionResponse.data)}
                                                         borderColor: alpha(theme.palette.divider, 0.4),
                                                         overflowWrap: 'break-word',
                                                         wordWrap: 'break-word',
-                                                        boxShadow: '0 2px 12px rgba(0,0,0,0.1)'
+                                                        boxShadow: '0 2px 12px rgba(0,0,0,0.1)',
+                                                        cursor: 'pointer',
+                                                        transition: 'all 0.2s ease-in-out',
+                                                        '&:hover': {
+                                                            bgcolor: alpha(theme.palette.background.paper, 0.85),
+                                                            boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
+                                                            transform: 'translateY(-2px)',
+                                                        }
                                                     }}
                                                 >
                                                     <Typography 
@@ -884,6 +1161,19 @@ ${formatQueryResults(executionResponse.data)}
                     </Box>
                 </Box>
             </Box>
+            
+            {/* Results Popup - Show when query results are available */}
+            <PopupResult 
+                open={showResultPopup}
+                onClose={() => {
+                    setShowResultPopup(false);
+                    setHistoricQueryData(null);  // Clear historic data when closing
+                }}
+                sql={historicQueryData ? historicQueryData.sql : generatedSql}
+                results={historicQueryData ? historicQueryData.results : queryResult}
+                executionTime={historicQueryData ? null : queryResult?.execution_time}
+                naturalQuery={historicQueryData ? historicQueryData.naturalQuery : currentNaturalQuery}
+            />
         </Box>
     );
 }
