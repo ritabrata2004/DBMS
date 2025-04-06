@@ -33,6 +33,7 @@ import StorageIcon from '@mui/icons-material/Storage';
 import EditIcon from '@mui/icons-material/Edit';
 import QueryStatsIcon from '@mui/icons-material/QueryStats';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import DeleteIcon from '@mui/icons-material/Delete';
 import { useNavigate } from 'react-router-dom';
 import api from '../api';
 import Navbar from '../components/Navbar';
@@ -58,6 +59,10 @@ function DatabaseSelection() {
   
   // Option Dialog
   const [optionsDialogOpen, setOptionsDialogOpen] = useState(false);
+  
+  // Delete Dialog
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [databaseToDelete, setDatabaseToDelete] = useState(null);
   
   // Errors and messages
   const [error, setError] = useState(null);
@@ -167,6 +172,37 @@ function DatabaseSelection() {
     setOptionsDialogOpen(false);
   };
 
+  const handleDeleteDatabase = async () => {
+    if (!databaseToDelete) return;
+    
+    setLoading(true);
+    try {
+      await api.deleteDatabase(databaseToDelete.id);
+      
+      // Update the local state to remove the deleted database
+      setDatabases(databases.filter(db => db.id !== databaseToDelete.id));
+      
+      // Show success message
+      showSnackbar(`Database "${databaseToDelete.name}" deleted successfully`, 'success');
+      
+      // Close the dialog and reset state
+      setDeleteDialogOpen(false);
+      setDatabaseToDelete(null);
+    } catch (error) {
+      console.error('Error deleting database:', error);
+      showSnackbar('Failed to delete database', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const openDeleteDialog = (db, event) => {
+    // Stop propagation to prevent the list item click from triggering
+    event.stopPropagation();
+    setDatabaseToDelete(db);
+    setDeleteDialogOpen(true);
+  };
+
   const showSnackbar = (message, severity = 'success') => {
     setSnackbarMessage(message);
     setSnackbarSeverity(severity);
@@ -241,6 +277,13 @@ function DatabaseSelection() {
                       >
                         {db.connection_status?.toUpperCase() || 'UNKNOWN'}
                       </Typography>
+                      <IconButton 
+                        edge="end" 
+                        aria-label="delete" 
+                        onClick={(event) => openDeleteDialog(db, event)}
+                      >
+                        <DeleteIcon />
+                      </IconButton>
                     </ListItemButton>
                   </ListItem>
                 ))}
@@ -426,6 +469,43 @@ function DatabaseSelection() {
             <DialogActions sx={{ px: 3, pb: 2 }}>
               <Button onClick={() => setOptionsDialogOpen(false)} color="inherit">
                 Cancel
+              </Button>
+            </DialogActions>
+          </Dialog>
+
+          {/* Delete Database Dialog */}
+          <Dialog
+            open={deleteDialogOpen}
+            onClose={() => {
+              setDeleteDialogOpen(false);
+              setDatabaseToDelete(null);
+            }}
+            fullWidth
+            maxWidth="sm"
+          >
+            <DialogTitle>Delete Database</DialogTitle>
+            <DialogContent>
+              <Typography variant="body1" sx={{ mb: 2 }}>
+                Are you sure you want to delete the database "{databaseToDelete?.name}"? This action cannot be undone.
+              </Typography>
+            </DialogContent>
+            <DialogActions sx={{ px: 3, pb: 2 }}>
+              <Button 
+                onClick={() => {
+                  setDeleteDialogOpen(false);
+                  setDatabaseToDelete(null);
+                }} 
+                color="inherit"
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleDeleteDatabase} 
+                variant="contained"
+                color="error"
+                disabled={loading}
+              >
+                {loading ? <CircularProgress size={24} /> : 'Delete'}
               </Button>
             </DialogActions>
           </Dialog>
