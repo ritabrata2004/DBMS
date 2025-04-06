@@ -13,7 +13,7 @@ class SessionSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Session
-        fields = ['id', 'title', 'created_at', 'updated_at', 'queries', 'query_count']
+        fields = ['id', 'title', 'database_name', 'database_id', 'created_at', 'updated_at', 'queries', 'query_count']
         
     def get_query_count(self, obj):
         return obj.queries.count()
@@ -24,7 +24,7 @@ class SessionListSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Session
-        fields = ['id', 'title', 'created_at', 'updated_at', 'query_count']
+        fields = ['id', 'title', 'database_name', 'database_id', 'created_at', 'updated_at', 'query_count']
         
     def get_query_count(self, obj):
         return obj.queries.count()

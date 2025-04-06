@@ -3,9 +3,13 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"
 import Login from "./pages/Login"
 import Register from "./pages/Register"
 import Home from "./pages/Home"
+import Sessions from "./pages/Sessions"
 import NotFound from "./pages/NotFound"
 import ProtectedRoute from "./components/ProtectedRoute"
 import Layout from "./components/Layout"
+import DatabaseSelection from "./pages/DatabaseSelection"
+import DatabaseTester from "./pages/DatabaseTester"
+import UserProfile from "./pages/UserProfile"
 
 function Logout() {
   localStorage.clear()
@@ -25,7 +29,47 @@ function App() {
           path="/"
           element={
             <ProtectedRoute>
+              <DatabaseSelection />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/sessions"
+          element={
+            <ProtectedRoute>
+              <Sessions />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/query"
+          element={
+            <ProtectedRoute>
               <Home />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/databases"
+          element={
+            <ProtectedRoute>
+              <DatabaseSelection />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/db-tester"
+          element={
+            <ProtectedRoute>
+              <DatabaseTester />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/profile"
+          element={
+            <ProtectedRoute>
+              <UserProfile />
             </ProtectedRoute>
           }
         />

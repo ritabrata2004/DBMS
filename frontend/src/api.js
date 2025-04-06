@@ -20,12 +20,49 @@ api.interceptors.request.use(
 
 // Session management functions - all endpoints are now under /api/ prefix
 api.getSessions = () => api.get("/api/sessions/");
-api.createSession = (title) => api.post("/api/sessions/", { title });
+api.createSession = (title, database) => api.post("/api/sessions/", { title, database });
 api.getSession = (sessionId) => api.get(`/api/sessions/${sessionId}/`);
 api.updateSessionTitle = (sessionId, title) =>
   api.patch(`/api/sessions/${sessionId}/`, { title });
 api.deleteSession = (sessionId) => api.delete(`/api/sessions/${sessionId}/`);
 api.addQueryToSession = (sessionId, prompt, response) =>
   api.post(`/api/sessions/${sessionId}/queries/`, { prompt, response });
+
+// Database management functions
+api.getDatabases = () => api.get("/api/databases/databases/");
+api.getDatabase = (databaseId) => api.get(`/api/databases/databases/${databaseId}/`);
+api.createDatabase = (databaseData) => api.post("/api/databases/databases/", databaseData);
+api.updateDatabase = (databaseId, databaseData) => api.patch(`/api/databases/databases/${databaseId}/`, databaseData);
+api.deleteDatabase = (databaseId) => api.delete(`/api/databases/databases/${databaseId}/`);
+api.testConnection = (databaseId) => api.post(`/api/databases/databases/${databaseId}/test_connection/`);
+api.refreshMetadata = (databaseId) => api.post(`/api/databases/databases/${databaseId}/refresh_metadata/`);
+
+// Metadata management functions
+api.getTableMetadata = (databaseId) => api.get(`/api/databases/databases/${databaseId}/tables/`);
+api.updateTableMetadata = (tableId, metadata) => api.patch(`/api/databases/tables/${tableId}/`, metadata);
+api.getColumnMetadata = (tableId) => api.get(`/api/databases/tables/${tableId}/columns/`);
+api.updateColumnMetadata = (columnId, metadata) => api.patch(`/api/databases/columns/${columnId}/`, metadata);
+
+// Database metadata functions
+api.getSessionsByDatabase = (databaseId) => api.get(`/api/sessions/?database=${databaseId}`);
+api.generateMetadataDescription = (type, name, sampleData) => 
+  api.post("/api/llm/generate-description/", { 
+    type, 
+    name, 
+    sample_data: sampleData 
+  });
+
+// NL to SQL conversion
+api.generateSqlFromNL = (query, databaseId) => 
+  api.post("/api/llm/generate-sql/", { 
+    query, 
+    database_id: databaseId 
+  });
+
+// Execute SQL query
+api.executeSqlQuery = (databaseId, sqlQuery) => 
+  api.post(`/api/databases/databases/${databaseId}/execute_query/`, {
+    query: sqlQuery
+  });
 
 export default api;

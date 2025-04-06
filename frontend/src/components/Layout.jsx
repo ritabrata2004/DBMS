@@ -1,23 +1,12 @@
 import React from 'react';
 import { 
-    AppBar, 
-    Toolbar, 
-    Typography, 
-    IconButton, 
-    Container, 
     Box,
-    Button
+    Container, 
+    Typography 
 } from '@mui/material';
-import LogoutIcon from '@mui/icons-material/Logout';
-import { useNavigate } from 'react-router-dom';
+import Navbar from './Navbar';
 
 const Layout = ({ children }) => {
-    const navigate = useNavigate();
-    
-    const handleLogout = () => {
-        navigate('/logout');
-    };
-    
     return (
         <Box sx={{ 
             display: 'flex', 
@@ -26,20 +15,7 @@ const Layout = ({ children }) => {
             bgcolor: 'background.default',
             color: 'text.primary'
         }}>
-            <AppBar position="static" elevation={0} color="primary">
-                <Toolbar>
-                    <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-                        LLM Query System
-                    </Typography>
-                    <Button 
-                        color="inherit"
-                        onClick={handleLogout}
-                        endIcon={<LogoutIcon />}
-                    >
-                        Logout
-                    </Button>
-                </Toolbar>
-            </AppBar>
+            <Navbar />
             
             <Container component="main" sx={{ flexGrow: 1, py: 3 }}>
                 {children}

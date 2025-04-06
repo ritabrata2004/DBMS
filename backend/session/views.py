@@ -17,10 +17,19 @@ class SessionListCreateView(APIView):
     
     def post(self, request):
         # Create a new session for the user
-        session = Session.objects.create(
-            user=request.user,
-            title=request.data.get('title', 'New Session')
-        )
+        session_data = {
+            'user': request.user,
+            'title': request.data.get('title', 'New Session'),
+        }
+        
+        # Add database information if provided
+        if 'database' in request.data and request.data['database']:
+            database = request.data['database']
+            if isinstance(database, dict):
+                session_data['database_name'] = database.get('name')
+                session_data['database_id'] = database.get('id')
+        
+        session = Session.objects.create(**session_data)
         serializer = SessionSerializer(session)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
