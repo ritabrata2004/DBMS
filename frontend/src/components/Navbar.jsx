@@ -299,16 +299,19 @@ function Navbar() {
     <MotionAppBar 
       position="fixed"
       elevation={0}
-      initial={{ y: -70 }}
+      initial={{ y: 0 }}
       animate={{ y: 0 }}
-      transition={{ type: "spring", stiffness: 80, damping: 20 }}
+      transition={{ type: "spring", stiffness: 100, damping: 30 }}
       sx={{ 
         background: 'linear-gradient(90deg, rgba(18, 26, 41, 0.95) 0%, rgba(26, 35, 50, 0.95) 100%)',
         backdropFilter: 'blur(10px)',
         borderBottom: '1px solid',
         borderColor: alpha(theme.palette.divider, 0.08),
         boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
-        zIndex: theme.zIndex.drawer + 1,
+        zIndex: theme.zIndex.drawer + 10,
+        top: 0,
+        left: 0,
+        right: 0,
       }}
     >
       <Toolbar>
