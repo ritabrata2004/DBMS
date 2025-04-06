@@ -704,7 +704,7 @@ ${formatQueryResults(executionResponse.data)}
                                                         borderRadius: '16px 16px 16px 4px',
                                                         border: '1px solid',
                                                         borderColor: alpha(theme.palette.divider, 0.4),
-                                                        overflowWrap: 'break-word',,
+                                                        overflowWrap: 'break-word',
                                                         wordWrap: 'break-word',
                                                         boxShadow: '0 2px 12px rgba(0,0,0,0.1)'
                                                     }}
