@@ -62,7 +62,7 @@ function Home() {
     const [drawerOpen, setDrawerOpen] = useState(false);
 
     // Sidebar width for calculations
-    const sidebarWidth = 280;
+    const sidebarWidth = 320;
     
     // On component mount, we need to either load the user's most recent session
     // or create a new one if none exists
@@ -1010,11 +1010,27 @@ ${formatQueryResults(executionResponse.data)}
                                                         sx={{
                                                             p: 2,
                                                             color: 'white',
-                                                            backgroundImage: 'linear-gradient(45deg, #5581D9 10%, #6596EB 90%)',
+                                                            backgroundImage: 'linear-gradient(45deg, #4776D0 10%, #6596EB 60%, #7EABFF 95%)',
                                                             borderRadius: '16px 16px 4px 16px',
-                                                            boxShadow: '0 2px 12px rgba(101, 150, 235, 0.3)',
+                                                            boxShadow: '0 2px 15px rgba(101, 150, 235, 0.4)',
                                                             overflowWrap: 'break-word',
-                                                            wordBreak: 'break-word'
+                                                            wordBreak: 'break-word',
+                                                            animation: 'fadeIn 0.5s ease-out',
+                                                            '@keyframes fadeIn': {
+                                                                '0%': {
+                                                                    opacity: 0,
+                                                                    transform: 'translateY(10px)'
+                                                                },
+                                                                '100%': {
+                                                                    opacity: 1,
+                                                                    transform: 'translateY(0)'
+                                                                }
+                                                            },
+                                                            transition: 'transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
+                                                            '&:hover': {
+                                                                transform: 'translateY(-2px)',
+                                                                boxShadow: '0 4px 20px rgba(101, 150, 235, 0.5)',
+                                                            }
                                                         }}
                                                     >
                                                         <Typography variant="body1">{item.prompt}</Typography>
@@ -1024,7 +1040,18 @@ ${formatQueryResults(executionResponse.data)}
                                                     sx={{ 
                                                         ml: 1, 
                                                         bgcolor: theme.palette.primary.dark,
-                                                        boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
+                                                        boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+                                                        animation: 'pulseAvatar 0.5s ease-out',
+                                                        '@keyframes pulseAvatar': {
+                                                            '0%': {
+                                                                transform: 'scale(0.8)',
+                                                                opacity: 0
+                                                            },
+                                                            '100%': {
+                                                                transform: 'scale(1)',
+                                                                opacity: 1
+                                                            }
+                                                        }
                                                     }} 
                                                     alt="User"
                                                 >
@@ -1055,7 +1082,7 @@ ${formatQueryResults(executionResponse.data)}
                                                         sx={{
                                                             p: 2,
                                                             color: theme.palette.text.primary,
-                                                            bgcolor: alpha(theme.palette.background.paper, 0.7),
+                                                            backgroundImage: 'linear-gradient(135deg, rgba(100, 95, 190, 0.05) 0%, rgba(80, 110, 200, 0.15) 100%)',
                                                             backdropFilter: 'blur(10px)',
                                                             borderRadius: '16px 16px 16px 4px',
                                                             border: '1px solid',
@@ -1064,11 +1091,12 @@ ${formatQueryResults(executionResponse.data)}
                                                             wordWrap: 'break-word',
                                                             boxShadow: '0 2px 12px rgba(0,0,0,0.1)',
                                                             cursor: 'pointer',
-                                                            transition: 'all 0.2s ease-in-out',
+                                                            transition: 'all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)',
                                                             '&:hover': {
-                                                                bgcolor: alpha(theme.palette.background.paper, 0.85),
+                                                                backgroundImage: 'linear-gradient(135deg, rgba(100, 95, 190, 0.1) 0%, rgba(80, 110, 200, 0.2) 100%)',
                                                                 boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
                                                                 transform: 'translateY(-2px)',
+                                                                borderColor: alpha(theme.palette.primary.main, 0.2),
                                                             }
                                                         }}
                                                     >
@@ -1076,6 +1104,17 @@ ${formatQueryResults(executionResponse.data)}
                                                             variant="body1" 
                                                             sx={{ 
                                                                 whiteSpace: 'pre-wrap',
+                                                                animation: 'fadeInSlide 0.4s ease-out',
+                                                                '@keyframes fadeInSlide': {
+                                                                    '0%': {
+                                                                        opacity: 0,
+                                                                        transform: 'translateY(10px)'
+                                                                    },
+                                                                    '100%': {
+                                                                        opacity: 1,
+                                                                        transform: 'translateY(0)'
+                                                                    }
+                                                                },
                                                                 '& code': {
                                                                     backgroundColor: alpha(theme.palette.background.default, 0.5),
                                                                     fontFamily: 'monospace',
