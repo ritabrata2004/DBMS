@@ -45,6 +45,7 @@ function Form({ route, method }) {
             return false;
         }
         
+        // Email is required for both login and registration when using Firebase
         if (!email.trim()) {
             setError("Email is required");
             setOpenAlert(true);
@@ -87,57 +88,86 @@ function Form({ route, method }) {
         setLoading(true);
         
         try {
-            // First handle Firebase authentication
-            console.log(`Attempting ${isLogin ? 'login' : 'registration'} with email: ${email}`);
-            
-            const authResult = isLogin 
-                ? await loginWithEmailAndPassword(email, password)
-                : await registerWithEmailAndPassword(email, password);
-                
-            if (authResult.error) {
-                setError(authResult.error.message);
-                setOpenAlert(true);
-                setLoading(false);
-                console.error("Firebase auth error:", authResult.error.code);
-                return;
-            }
-            
-            console.log("Firebase auth success, proceeding with backend auth");
-            
-            // If Firebase auth is successful, proceed with backend auth
-            try {
-                const res = await api.post(route, { username, password });
-                
-                if (isLogin) {
+            // For login, try to authenticate directly with the backend first
+            // This avoids the issue where Firebase rejects form-based login for Google-created accounts
+            if (isLogin) {
+                try {
+                    // Try direct Django authentication first
+                    const res = await api.post("/api/user/login/", { 
+                        username, 
+                        password,
+                        email
+                    });
+                    
                     localStorage.setItem(ACCESS_TOKEN, res.data.access);
                     localStorage.setItem(REFRESH_TOKEN, res.data.refresh);
                     navigate("/");
-                } else {
-                    // On successful registration
-                    navigate("/login");
-                }
-            } catch (backendError) {
-                console.error("Backend auth error:", backendError);
-                
-                if (backendError.response) {
-                    const data = backendError.response.data;
-                    
-                    if (data.username) {
-                        setError(`Username error: ${data.username.join(', ')}`);
-                    } else if (data.password) {
-                        setError(`Password error: ${data.password.join(', ')}`);
-                    } else if (data.detail) {
-                        setError(data.detail);
+                } catch (backendError) {
+                    // If backend authentication fails, then try Firebase
+                    if (backendError.response && backendError.response.status === 401) {
+                        // Now try with Firebase
+                        try {
+                            const authResult = await loginWithEmailAndPassword(email, password);
+                            
+                            if (authResult.error) {
+                                setError(authResult.error.message);
+                                setOpenAlert(true);
+                                setLoading(false);
+                                return;
+                            }
+                            
+                            // If Firebase login succeeds, use firebase-auth endpoint
+                            const firebaseUser = authResult.user;
+                            const response = await api.post("/api/user/firebase-auth/", { 
+                                username,
+                                email: firebaseUser.email,
+                                uid: firebaseUser.uid,
+                                is_registration: false
+                            });
+                            
+                            localStorage.setItem(ACCESS_TOKEN, response.data.access);
+                            localStorage.setItem(REFRESH_TOKEN, response.data.refresh);
+                            navigate("/");
+                        } catch (firebaseError) {
+                            console.error("Firebase login error:", firebaseError);
+                            setError("Invalid username or password. If you registered with Google, please use Google Sign-In.");
+                            setOpenAlert(true);
+                        }
                     } else {
-                        setError(`Error: ${backendError.response.status} ${backendError.response.statusText}`);
+                        handleBackendError(backendError);
                     }
-                } else if (backendError.request) {
-                    setError("Network error: Unable to connect to the server. Please check if the server is running.");
-                } else {
-                    setError(`Error: ${backendError.message}`);
+                }
+            } else {
+                // For registration, use Firebase first as before
+                const authResult = await registerWithEmailAndPassword(email, password);
+                    
+                if (authResult.error) {
+                    setError(authResult.error.message);
+                    setOpenAlert(true);
+                    console.error(`Firebase registration error:`, authResult.error.code);
+                    setLoading(false);
+                    return;
                 }
                 
-                setOpenAlert(true);
+                console.log(`Firebase registration successful for:`, email);
+                const firebaseUser = authResult.user;
+                
+                try {
+                    // Register with backend
+                    const response = await api.post("/api/user/firebase-auth/", { 
+                        username,
+                        email: firebaseUser.email,
+                        uid: firebaseUser.uid,
+                        is_registration: true,
+                        password: password // Send the password so backend can store it
+                    });
+                    
+                    // Registration flow - navigate to login
+                    setError(""); // Clear any existing errors
+                    navigate("/login");
+                } catch (backendError) {
+                    handleBackendError(backendError);
+                }
             }
         } catch (error) {
             console.error("General auth error:", error);
@@ -148,20 +178,32 @@ function Form({ route, method }) {
         }
     };
     
-    // Helper function to generate a secure password for Google users
-    const generateSecurePassword = () => {
-        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()';
-        let password = '';
+    // Helper function to handle backend errors
+    const handleBackendError = (backendError) => {
+        console.error("Backend auth error:", backendError);
         
-        // Generate a 20-character random password
-        for (let i = 0; i < 20; i++) {
-            password += chars.charAt(Math.floor(Math.random() * chars.length));
+        if (backendError.response) {
+            const data = backendError.response.data;
+            
+            if (data.username) {
+                setError(`Username error: ${data.username.join(', ')}`);
+            } else if (data.password) {
+                setError(`Password error: ${data.password.join(', ')}`);
+            } else if (data.detail) {
+                setError(data.detail);
+            } else {
+                setError(`Error: ${backendError.response.status} ${backendError.response.statusText}`);
+            }
+        } else if (backendError.request) {
+            setError("Network error: Unable to connect to the server. Please check if the server is running.");
+        } else {
+            setError(`Error: ${backendError.message}`);
         }
         
-        return password;
+        setOpenAlert(true);
     };
     
-    // Handle Google Sign-in without a dedicated backend endpoint
+    // Handle Google Sign-in
     const handleGoogleSignIn = async () => {
         setLoading(true);
         setError("");
@@ -183,53 +225,20 @@ function Form({ route, method }) {
             console.log("Google auth success for:", googleUser.email);
             
             try {
-                // We now have a Google user, let's connect with our backend
-                if (isLogin) {
-                    // For login, use the google-auth endpoint
-                    const response = await api.post("/api/user/google-auth/", { 
-                        email: googleUser.email,
-                        uid: googleUser.uid,
-                        display_name: googleUser.displayName || ""
-                    });
-                    
-                    // Store the tokens and redirect
-                    localStorage.setItem(ACCESS_TOKEN, response.data.access);
-                    localStorage.setItem(REFRESH_TOKEN, response.data.refresh);
-                    navigate("/");
-                } else {
-                    // For registration, use the standard registration endpoint
-                    // Generate a username from the Google account
-                    const suggestedUsername = googleUser.displayName || 
-                        googleUser.email.split('@')[0].replace(/[^a-zA-Z0-9]/g, '');
-                    
-                    // Prefill the form fields for a better user experience
-                    setUsername(suggestedUsername);
-                    setEmail(googleUser.email);
-                    
-                    setError("Google sign-in successful! Please complete your registration by submitting the form.");
-                    setOpenAlert(true);
-                }
-            } catch (backendError) {
-                console.error("Backend error after Google sign-in:", backendError);
+                // Use firebase-auth endpoint - the same one used for form-based auth
+                const response = await api.post("/api/user/firebase-auth/", { 
+                    email: googleUser.email,
+                    uid: googleUser.uid,
+                    display_name: googleUser.displayName || "",
+                    is_google_login: true
+                });
                 
-                if (backendError.response) {
-                    const data = backendError.response.data;
-                    
-                    if (data.detail) {
-                        setError(`Backend error: ${data.detail}`);
-                    } else if (data.username) {
-                        setError(`Username error: ${data.username.join(', ')}`);
-                    } else if (data.email) {
-                        setError(`Email error: ${data.email.join(', ')}`);
-                    } else {
-                        setError(`Error: ${backendError.response.status} ${backendError.response.statusText}`);
-                    }
-                    
-                    setOpenAlert(true);
-                } else {
-                    setError("Network error connecting to backend after Google sign-in");
-                    setOpenAlert(true);
-                }
+                // Store the tokens and redirect
+                localStorage.setItem(ACCESS_TOKEN, response.data.access);
+                localStorage.setItem(REFRESH_TOKEN, response.data.refresh);
+                navigate("/");
+            } catch (backendError) {
+                handleBackendError(backendError);
             }
         } catch (error) {
             console.error("General Google auth error:", error);
@@ -331,7 +340,7 @@ function Form({ route, method }) {
                         }}
                     />
                     
-                    {/* Email field */}
+                    {/* Email field - now required for both login and registration */}
                     <TextField
                         margin="normal"
                         required

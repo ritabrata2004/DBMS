@@ -144,13 +144,7 @@ function Home() {
             console.log("Executing SQL on database ID:", databaseId);
             const executionResponse = await api.executeSqlQuery(databaseId, generatedSql);
             
-            // DEBUG: Log the complete response structure
-            console.log("Query execution response (full):", executionResponse);
-            console.log("Query execution data:", executionResponse.data);
-            console.log("Query execution status:", executionResponse.data.status);
             console.log("Query execution success:", executionResponse.data.success);
-            console.log("Query execution columns:", executionResponse.data.columns);
-            console.log("Query execution rows:", executionResponse.data.rows);
             
             // Format the response to display the generated SQL and the results
             const formattedResponse = `
@@ -269,9 +263,25 @@ ${formatQueryResults(executionResponse.data)}
     }
 
     return (
-        <>
+        <Box sx={{ 
+            width: '100%',
+            height: '100vh',
+            maxWidth: '100vw',
+            overflowX: 'hidden',
+            position: 'relative',
+            display: 'flex',
+            flexDirection: 'column'
+        }}>
             <Navbar />
-            <Box sx={{ pt: 2, px: 3, bgcolor: 'background.paper', borderBottom: '1px solid', borderColor: 'divider', zIndex: 50 }}>
+            <Box sx={{ 
+                pt: 2, 
+                px: { xs: 2, md: 3 }, 
+                bgcolor: 'background.paper', 
+                borderBottom: '1px solid', 
+                borderColor: 'divider', 
+                zIndex: 50,
+                width: '100%'
+            }}>
                 <Box display="flex" alignItems="center">
                     <IconButton 
                         onClick={() => navigate('/sessions', { state: { database: { id: currentSession?.database_id, name: currentSession?.database_name } } })} 
@@ -281,12 +291,28 @@ ${formatQueryResults(executionResponse.data)}
                     >
                         <ArrowBackIcon />
                     </IconButton>
-                    <Typography variant="h5" component="h1">
+                    <Typography 
+                        variant="h5" 
+                        component="h1"
+                        sx={{
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis'
+                        }}
+                    >
                         {currentSession?.title || "Chat Session"}
                     </Typography>
                 </Box>
             </Box>
-            <Box sx={{ display: 'flex', height: 'calc(100vh - 128px)', bgcolor: 'background.default' }}>
+            
+            <Box sx={{ 
+                display: 'flex', 
+                height: 'calc(100vh - 128px)', 
+                bgcolor: 'background.default',
+                width: '100%',
+                position: 'relative',
+                overflow: 'hidden'
+            }}>
                 {/* Sidebar - For desktop */}
                 {!isMobile && (
                     <Box
@@ -295,21 +321,32 @@ ${formatQueryResults(executionResponse.data)}
                             height: '100%',
                             position: 'fixed',
                             left: 0,
-                            top: 0,
+                            top: 64,
                             bottom: 0,
                             bgcolor: 'background.paper',
                             borderRight: '1px solid',
                             borderColor: 'divider',
                             display: 'flex',
                             flexDirection: 'column',
-                            zIndex: 100
+                            zIndex: 100,
+                            overflowY: 'auto',
+                            overflowX: 'hidden'
                         }}
                     >
                         <Box sx={{ p: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
                             <Typography variant="h6" sx={{ color: 'primary.main', fontWeight: 500 }}>
                                 LLM Query System
                             </Typography>
-                            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                            <Typography 
+                                variant="caption" 
+                                sx={{ 
+                                    color: 'text.secondary',
+                                    display: 'block',
+                                    whiteSpace: 'nowrap',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis'
+                                }}
+                            >
                                 {currentSession?.title}
                             </Typography>
                         </Box>
@@ -340,7 +377,7 @@ ${formatQueryResults(executionResponse.data)}
                         flexGrow: 1, 
                         marginLeft: isMobile ? 0 : `${sidebarWidth}px`,
                         width: isMobile ? '100%' : `calc(100% - ${sidebarWidth}px)`,
-                        height: '100vh',
+                        height: '100%',
                         display: 'flex',
                         flexDirection: 'column',
                         position: 'relative',
@@ -359,7 +396,16 @@ ${formatQueryResults(executionResponse.data)}
                                 >
                                     <MenuIcon />
                                 </IconButton>
-                                <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+                                <Typography 
+                                    variant="h6" 
+                                    component="div" 
+                                    sx={{ 
+                                        flexGrow: 1,
+                                        whiteSpace: 'nowrap',
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis'
+                                    }}
+                                >
                                     LLM Query System
                                     {currentSession && (
                                         <Chip 
@@ -386,6 +432,7 @@ ${formatQueryResults(executionResponse.data)}
                             sx={{
                                 '& .MuiDrawer-paper': { 
                                     width: sidebarWidth,
+                                    maxWidth: '80vw',
                                     bgcolor: 'background.paper',
                                     color: 'text.primary'
                                 },
@@ -413,6 +460,7 @@ ${formatQueryResults(executionResponse.data)}
                         sx={{ 
                             flexGrow: 1, 
                             overflowY: 'auto', 
+                            overflowX: 'hidden',
                             display: 'flex',
                             flexDirection: 'column',
                             width: '100%',
@@ -449,7 +497,9 @@ ${formatQueryResults(executionResponse.data)}
                                                 bgcolor: 'primary.dark',
                                                 borderRadius: '16px 16px 4px 16px',
                                                 maxWidth: { xs: '80%', md: '70%' },
-                                                boxShadow: '0 1px 2px rgba(0,0,0,0.2)'
+                                                boxShadow: '0 1px 2px rgba(0,0,0,0.2)',
+                                                overflowWrap: 'break-word',
+                                                wordBreak: 'break-word'
                                             }}
                                         >
                                             <Typography variant="body1">{item.prompt}</Typography>
@@ -468,7 +518,8 @@ ${formatQueryResults(executionResponse.data)}
                                                 maxWidth: { xs: '85%', md: '75%' },
                                                 border: '1px solid',
                                                 borderColor: 'divider',
-                                                wordWrap: 'break-word',
+                                                overflowWrap: 'break-word',
+                                                wordBreak: 'break-word',
                                                 boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
                                             }}
                                         >
@@ -505,7 +556,7 @@ ${formatQueryResults(executionResponse.data)}
                             bottom: 0,
                             left: isMobile ? 0 : sidebarWidth,
                             right: 0,
-                            width: 'auto', 
+                            width: isMobile ? '100%' : `calc(100% - ${sidebarWidth}px)`, 
                             bgcolor: 'background.default',
                             borderTop: '1px solid',
                             borderColor: 'divider',
@@ -596,7 +647,7 @@ ${formatQueryResults(executionResponse.data)}
                     </Box>
                 </Box>
             </Box>
-        </>
+        </Box>
     );
 }
 
