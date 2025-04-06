@@ -150,13 +150,7 @@ function Home() {
             console.log("Executing SQL on database ID:", databaseId);
             const executionResponse = await api.executeSqlQuery(databaseId, generatedSql);
             
-            // DEBUG: Log the complete response structure
-            console.log("Query execution response (full):", executionResponse);
-            console.log("Query execution data:", executionResponse.data);
-            console.log("Query execution status:", executionResponse.data.status);
             console.log("Query execution success:", executionResponse.data.success);
-            console.log("Query execution columns:", executionResponse.data.columns);
-            console.log("Query execution rows:", executionResponse.data.rows);
             
             // Format the response to display the generated SQL and the results
             const formattedResponse = `
@@ -293,7 +287,15 @@ ${formatQueryResults(executionResponse.data)}
     }
 
     return (
-        <>
+        <Box sx={{ 
+            width: '100%',
+            height: '100vh',
+            maxWidth: '100vw',
+            overflowX: 'hidden',
+            position: 'relative',
+            display: 'flex',
+            flexDirection: 'column'
+        }}>
             <Navbar />
             <Box sx={{ 
                 pt: 2, 
@@ -341,7 +343,7 @@ ${formatQueryResults(executionResponse.data)}
                             height: '100%',
                             position: 'fixed',
                             left: 0,
-                            top: 0,
+                            top: 64,
                             bottom: 0,
                             bgcolor: alpha(theme.palette.background.paper, 0.97),
                             backdropFilter: 'blur(4px)',
@@ -350,7 +352,9 @@ ${formatQueryResults(executionResponse.data)}
                             display: 'flex',
                             flexDirection: 'column',
                             zIndex: 100,
-                            boxShadow: '0 0 20px rgba(0,0,0,0.1)'
+                            boxShadow: '0 0 20px rgba(0,0,0,0.1)',
+                            overflowY: 'auto',
+                            overflowX: 'hidden'
                         }}
                     >
                         <Box sx={{ 
@@ -367,7 +371,16 @@ ${formatQueryResults(executionResponse.data)}
                             }}>
                                 LLM Query System
                             </Typography>
-                            <Typography variant="caption" sx={{ color: alpha(theme.palette.text.secondary, 0.9) }}>
+                            <Typography 
+                                variant="caption" 
+                                sx={{ 
+                                    color: 'text.secondary',
+                                    display: 'block',
+                                    whiteSpace: 'nowrap',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis'
+                                }}
+                            >
                                 {currentSession?.title}
                             </Typography>
                         </Box>
@@ -413,7 +426,7 @@ ${formatQueryResults(executionResponse.data)}
                         flexGrow: 1, 
                         marginLeft: isMobile ? 0 : `${sidebarWidth}px`,
                         width: isMobile ? '100%' : `calc(100% - ${sidebarWidth}px)`,
-                        height: '100vh',
+                        height: '100%',
                         display: 'flex',
                         flexDirection: 'column',
                         position: 'relative',
@@ -553,6 +566,7 @@ ${formatQueryResults(executionResponse.data)}
                         sx={{ 
                             flexGrow: 1, 
                             overflowY: 'auto', 
+                            overflowX: 'hidden',
                             display: 'flex',
                             flexDirection: 'column',
                             width: '100%',
@@ -642,7 +656,9 @@ ${formatQueryResults(executionResponse.data)}
                                                         color: 'white',
                                                         backgroundImage: 'linear-gradient(45deg, #5581D9 10%, #6596EB 90%)',
                                                         borderRadius: '16px 16px 4px 16px',
-                                                        boxShadow: '0 2px 12px rgba(101, 150, 235, 0.3)'
+                                                        boxShadow: '0 2px 12px rgba(101, 150, 235, 0.3)',
+                                                        overflowWrap: 'break-word',
+                                                        wordBreak: 'break-word'
                                                     }}
                                                 >
                                                     <Typography variant="body1">{item.prompt}</Typography>
@@ -688,6 +704,7 @@ ${formatQueryResults(executionResponse.data)}
                                                         borderRadius: '16px 16px 16px 4px',
                                                         border: '1px solid',
                                                         borderColor: alpha(theme.palette.divider, 0.4),
+                                                        overflowWrap: 'break-word',
                                                         wordWrap: 'break-word',
                                                         boxShadow: '0 2px 12px rgba(0,0,0,0.1)'
                                                     }}
@@ -754,7 +771,7 @@ ${formatQueryResults(executionResponse.data)}
                             bottom: 0,
                             left: isMobile ? 0 : sidebarWidth,
                             right: 0,
-                            width: 'auto', 
+                            width: isMobile ? '100%' : `calc(100% - ${sidebarWidth}px)`, 
                             backgroundImage: 'linear-gradient(rgba(21, 26, 37, 0.6), rgba(30, 36, 50, 0.8))',
                             backdropFilter: 'blur(10px)',
                             borderTop: '1px solid',
@@ -867,7 +884,7 @@ ${formatQueryResults(executionResponse.data)}
                     </Box>
                 </Box>
             </Box>
-        </>
+        </Box>
     );
 }
 
