@@ -20,6 +20,9 @@ def llm_api(prompt, model="gpt-4o-mini", temperature=0.7, max_tokens=1000):
     """
     try:
         # Determine which API to use based on model name
+        api_key = os.getenv("OPENAI_API_KEY") or getattr(settings, "OPENAI_API_KEY", None)
+        if not api_key:
+            model ="llama-3.1-8b-instant"
         use_openai = model.startswith(("gpt", "o1", "o3"))
         
         if use_openai:
