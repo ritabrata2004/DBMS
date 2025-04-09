@@ -33,6 +33,7 @@ def llm_api(prompt, model="gpt-4o-mini", temperature=0.7, max_tokens=1000):
             messages=[
                 {"role": "user", "content": prompt},
             ],
+            # reasoning_effort="low",
             temperature=temperature,
             max_tokens=max_tokens
         )

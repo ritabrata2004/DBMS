@@ -89,3 +89,4 @@ coverage/
 .env.*
 !.env.example
 backend/db.sqlite3
+backend/db.sqlite3
