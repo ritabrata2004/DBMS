@@ -18,7 +18,9 @@ import {
   ListItemButton,
   ListItemText,
   ListItemIcon,
-  alpha
+  alpha,
+  Tooltip,
+  Badge
 } from '@mui/material';
 import { 
   Menu as MenuIcon,
@@ -34,6 +36,16 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { jwtDecode } from 'jwt-decode';
 import { ACCESS_TOKEN } from '../constants';
 import api from '../api';
+import { motion } from 'framer-motion';
+import { MotionDiv } from '../main';
+
+// Create motion components
+const MotionBox = motion(Box);
+const MotionIconButton = motion(IconButton);
+const MotionTypography = motion(Typography);
+const MotionAppBar = motion(AppBar);
+const MotionButton = motion(Button);
+const MotionAvatar = motion(Avatar);
 
 function Navbar() {
   const navigate = useNavigate();
@@ -107,62 +119,119 @@ function Navbar() {
       height: '100%',
       display: 'flex',
       flexDirection: 'column',
-      bgcolor: theme.palette.background.paper,
-      backgroundImage: 'linear-gradient(rgba(30, 36, 50, 0.97), rgba(21, 26, 37, 0.95))'
+      bgcolor: 'background.paper',
+      background: 'linear-gradient(180deg, rgba(26, 35, 50, 0.97) 0%, rgba(18, 26, 41, 0.98) 100%)',
+      backdropFilter: 'blur(20px)'
     }}>
-      <Box sx={{ 
-        p: 2.5, 
-        display: 'flex', 
-        alignItems: 'center', 
-        borderBottom: '1px solid',
-        borderColor: alpha(theme.palette.divider, 0.5)
-      }}>
-        <Typography variant="h6" sx={{ 
-          fontWeight: 600,
-          background: 'linear-gradient(45deg, #6596EB, #BB86FC)',
-          WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent',
-        }}>
+      <MotionBox 
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        sx={{ 
+          p: 2.5, 
+          display: 'flex', 
+          alignItems: 'center', 
+          borderBottom: '1px solid',
+          borderColor: alpha(theme.palette.divider, 0.15),
+          background: `linear-gradient(135deg, ${alpha(theme.palette.background.paper, 0.4)} 0%, ${alpha(theme.palette.background.paper, 0.2)} 100%)`,
+          backdropFilter: 'blur(10px)',
+          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)'
+        }}
+      >
+        <MotionTypography 
+          variant="h6" 
+          sx={{ 
+            fontWeight: 600,
+            background: 'linear-gradient(45deg, #7C4DFF, #03DAC6)',
+            backgroundSize: '200% auto',
+            animation: 'gradient-text-animation 4s infinite linear',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            '@keyframes gradient-text-animation': {
+              '0%': { backgroundPosition: '0% center' },
+              '100%': { backgroundPosition: '200% center' },
+            }
+          }}
+        >
           LLM Query System
-        </Typography>
-      </Box>
+        </MotionTypography>
+      </MotionBox>
       
-      <List sx={{ flexGrow: 1, px: 1.5, py: 2 }}>
-        {navItems.map((item) => (
-          <ListItem key={item.name} disablePadding sx={{ mb: 0.5 }}>
-            <ListItemButton 
-              onClick={() => handleNavigate(item.path)}
-              selected={isActive(item.path)}
-              sx={{ 
-                borderRadius: '8px',
-                transition: 'all 0.2s ease-in-out',
-                '&.Mui-selected': {
-                  bgcolor: alpha(theme.palette.primary.main, 0.15),
+      <List sx={{ flexGrow: 1, px: 1.5, py: 3 }}>
+        {navItems.map((item, index) => (
+          <MotionBox
+            key={item.name}
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ 
+              duration: 0.3, 
+              delay: index * 0.1 + 0.2,
+              ease: [0.4, 0, 0.2, 1]
+            }}
+            whileHover={{ x: 5 }}
+          >
+            <ListItem disablePadding sx={{ mb: 1.5 }}>
+              <ListItemButton 
+                onClick={() => handleNavigate(item.path)}
+                selected={isActive(item.path)}
+                sx={{ 
+                  borderRadius: '12px',
+                  transition: 'all 0.3s ease',
+                  py: 1.2,
+                  overflow: 'hidden',
+                  position: 'relative',
+                  '&::before': isActive(item.path) ? {
+                    content: '""',
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '4px',
+                    height: '100%',
+                    background: 'linear-gradient(180deg, #7C4DFF 0%, #03DAC6 100%)',
+                    borderRadius: '0 4px 4px 0',
+                  } : {},
+                  '&.Mui-selected': {
+                    bgcolor: 'rgba(124, 77, 255, 0.08)',
+                    '&:hover': {
+                      bgcolor: 'rgba(124, 77, 255, 0.16)',
+                    }
+                  },
                   '&:hover': {
-                    bgcolor: alpha(theme.palette.primary.main, 0.25),
+                    bgcolor: 'rgba(255, 255, 255, 0.04)',
+                    transform: 'translateX(5px)',
                   }
-                },
-                '&:hover': {
-                  bgcolor: alpha(theme.palette.background.paper, 0.1),
-                  transform: 'translateY(-1px)',
-                }
-              }}
-            >
-              <ListItemIcon sx={{ 
-                color: isActive(item.path) ? theme.palette.primary.main : theme.palette.text.secondary,
-                minWidth: '42px'
-              }}>
-                {item.icon}
-              </ListItemIcon>
-              <ListItemText 
-                primary={item.name} 
-                primaryTypographyProps={{ 
-                  fontWeight: isActive(item.path) ? 600 : 400,
-                  color: isActive(item.path) ? theme.palette.text.primary : theme.palette.text.secondary,
                 }}
-              />
-            </ListItemButton>
-          </ListItem>
+              >
+                <ListItemIcon sx={{ 
+                  color: isActive(item.path) ? theme.palette.primary.main : alpha(theme.palette.text.primary, 0.6),
+                  minWidth: '42px',
+                  transition: 'transform 0.3s ease, color 0.3s ease',
+                  transform: isActive(item.path) ? 'scale(1.1)' : 'scale(1)',
+                }}>
+                  {item.icon}
+                </ListItemIcon>
+                <ListItemText 
+                  primary={item.name} 
+                  primaryTypographyProps={{ 
+                    fontWeight: isActive(item.path) ? 600 : 400,
+                    color: isActive(item.path) ? theme.palette.primary.light : alpha(theme.palette.text.primary, 0.8),
+                    letterSpacing: '0.2px',
+                    transition: 'color 0.3s ease',
+                  }}
+                />
+                {isActive(item.path) && (
+                  <Box sx={{ 
+                    width: 8,
+                    height: 8,
+                    borderRadius: '50%',
+                    ml: 1,
+                    background: 'linear-gradient(45deg, #7C4DFF, #03DAC6)',
+                    boxShadow: '0 0 8px rgba(124, 77, 255, 0.5)',
+                  }} />
+                )}
+              </ListItemButton>
+            </ListItem>
+          </MotionBox>
         ))}
       </List>
       
@@ -170,95 +239,107 @@ function Navbar() {
         mt: 'auto', 
         p: 2, 
         borderTop: '1px solid', 
-        borderColor: alpha(theme.palette.divider, 0.5),
-        backgroundImage: 'linear-gradient(rgba(21, 26, 37, 0.8), rgba(30, 36, 50, 0.9))',
+        borderColor: alpha(theme.palette.divider, 0.15),
+        background: 'linear-gradient(0deg, rgba(18, 26, 41, 0.95) 0%, rgba(26, 35, 50, 0.6) 100%)',
+        backdropFilter: 'blur(10px)',
       }}>
-        <Button
+        <MotionButton
+          whileHover={{ y: -3, boxShadow: '0 10px 25px rgba(124, 77, 255, 0.4)' }}
+          whileTap={{ y: 1, boxShadow: '0 5px 15px rgba(124, 77, 255, 0.3)' }}
           fullWidth
           variant="outlined"
           color="primary"
           startIcon={<AccountCircleIcon />}
           onClick={() => handleNavigate('/profile')}
           sx={{ 
-            mb: 1.5, 
-            borderRadius: '8px',
-            py: 1,
+            mb: 2, 
+            borderRadius: '12px',
+            py: 1.2,
             borderWidth: '1.5px',
+            borderColor: alpha(theme.palette.primary.main, 0.5),
             '&:hover': {
               borderWidth: '1.5px',
-              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
-              transform: 'translateY(-2px)',
+              borderColor: theme.palette.primary.main,
+              boxShadow: '0 0 15px rgba(124, 77, 255, 0.3)',
             },
             justifyContent: 'flex-start',
-            pl: 2
+            pl: 2,
+            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
           }}
         >
           User Profile
-        </Button>
-        <Button
+        </MotionButton>
+        <MotionButton
+          whileHover={{ y: -3, boxShadow: '0 10px 25px rgba(124, 77, 255, 0.4)' }}
+          whileTap={{ y: 1, boxShadow: '0 5px 15px rgba(124, 77, 255, 0.3)' }}
           fullWidth
           variant="contained"
           color="primary"
           startIcon={<LogoutIcon />}
           onClick={handleLogout}
           sx={{ 
-            borderRadius: '8px',
-            py: 1,
-            background: 'linear-gradient(45deg, #5581D9 10%, #6596EB 90%)',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+            borderRadius: '12px',
+            py: 1.2,
+            boxShadow: '0 4px 10px rgba(124, 77, 255, 0.3)',
             '&:hover': {
-              background: 'linear-gradient(45deg, #4B74C7 10%, #5889DB 90%)',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.25)',
-              transform: 'translateY(-2px)',
+              boxShadow: '0 6px 15px rgba(124, 77, 255, 0.4)',
             },
             justifyContent: 'flex-start',
-            pl: 2
+            pl: 2,
+            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
           }}
         >
           Logout
-        </Button>
+        </MotionButton>
       </Box>
     </Box>
   );
   
   return (
-    <AppBar 
-      position="static" 
-      elevation={0} 
+    <MotionAppBar 
+      position="fixed"
+      elevation={0}
+      initial={{ y: 0 }}
+      animate={{ y: 0 }}
+      transition={{ type: "spring", stiffness: 100, damping: 30 }}
       sx={{ 
-        backgroundImage: 'linear-gradient(rgba(26, 32, 46, 0.95), rgba(30, 36, 50, 0.97))',
+        background: 'linear-gradient(90deg, rgba(18, 26, 41, 0.95) 0%, rgba(26, 35, 50, 0.95) 100%)',
         backdropFilter: 'blur(10px)',
         borderBottom: '1px solid',
-        borderColor: alpha(theme.palette.divider, 0.1),
-        boxShadow: '0 2px 12px rgba(0,0,0,0.1)'
+        borderColor: alpha(theme.palette.divider, 0.08),
+        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
+        zIndex: theme.zIndex.drawer + 10,
+        top: 0,
+        left: 0,
+        right: 0,
       }}
     >
       <Toolbar>
         {isMobile ? (
           <>
-            <IconButton
+            <MotionIconButton
+              whileHover={{ rotate: 180, scale: 1.1 }}
+              whileTap={{ scale: 0.95 }}
+              transition={{ type: "spring", stiffness: 400, damping: 17 }}
               color="inherit"
               edge="start"
               onClick={() => setDrawerOpen(true)}
               sx={{ 
                 mr: 2,
                 color: theme.palette.primary.light,
-                '&:hover': {
-                  backgroundColor: alpha(theme.palette.primary.main, 0.1),
-                  transform: 'scale(1.05)',
-                },
-                transition: 'all 0.2s ease-in-out',
+                transition: 'all 0.3s ease',
               }}
             >
               <MenuIcon />
-            </IconButton>
+            </MotionIconButton>
             <Drawer
               anchor="left"
               open={drawerOpen}
               onClose={() => setDrawerOpen(false)}
               PaperProps={{
                 sx: {
-                  boxShadow: '0 4px 20px rgba(0,0,0,0.25)',
+                  boxShadow: '0 8px 30px rgba(0, 0, 0, 0.25)',
+                  border: 'none',
                 }
               }}
             >
@@ -267,97 +348,161 @@ function Navbar() {
           </>
         ) : null}
         
-        <Typography 
+        <MotionTypography 
           variant="h6" 
           component="div" 
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.1 }}
+          whileHover={{ scale: 1.03, y: -2 }}
           sx={{ 
             flexGrow: 1, 
             fontWeight: 600,
             cursor: 'pointer',
-            background: 'linear-gradient(45deg, #6596EB, #BB86FC)',
+            background: 'linear-gradient(45deg, #7C4DFF, #03DAC6)',
+            backgroundSize: '200% auto',
+            animation: 'gradient-text-animation 4s infinite linear',
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
-            letterSpacing: '0.01em',
-            '&:hover': {
-              transform: 'translateY(-1px)',
+            letterSpacing: '0.02em',
+            transition: 'all 0.3s ease',
+            '@keyframes gradient-text-animation': {
+              '0%': { backgroundPosition: '0% center' },
+              '100%': { backgroundPosition: '200% center' },
             },
-            transition: 'all 0.2s ease-in-out',
+            '&:hover': {
+              letterSpacing: '0.03em',
+            }
           }}
           onClick={() => navigate('/databases')}
         >
           LLM Query System
-        </Typography>
+        </MotionTypography>
         
         {/* Desktop navigation */}
         {!isMobile && (
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            {navItems.map((item) => (
-              <Button 
+            {navItems.map((item, index) => (
+              <MotionBox
                 key={item.name}
-                onClick={() => handleNavigate(item.path)}
-                startIcon={item.icon}
-                sx={{ 
-                  mx: 0.8, 
-                  px: 2,
-                  py: 1,
-                  color: isActive(item.path) ? theme.palette.primary.light : alpha(theme.palette.text.primary, 0.8),
-                  fontWeight: isActive(item.path) ? 500 : 400,
-                  position: 'relative',
-                  borderRadius: '8px',
-                  '&:after': isActive(item.path) ? {
-                    content: '""',
-                    position: 'absolute',
-                    width: '60%',
-                    height: '3px',
-                    bgcolor: theme.palette.primary.main,
-                    borderRadius: '4px',
-                    bottom: '2px',
-                    left: '50%',
-                    transform: 'translateX(-50%)',
-                    background: 'linear-gradient(90deg, #5581D9, #BB86FC)',
-                  } : {},
-                  '&:hover': {
-                    bgcolor: alpha(theme.palette.primary.main, 0.08),
-                    transform: 'translateY(-1px)',
-                  },
-                  transition: 'all 0.2s ease-in-out',
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ 
+                  duration: 0.4, 
+                  delay: index * 0.1 + 0.2,
+                  ease: [0.4, 0, 0.2, 1]
                 }}
               >
-                {item.name}
-              </Button>
+                <Tooltip title={item.name} arrow placement="bottom">
+                  <MotionButton 
+                    onClick={() => handleNavigate(item.path)}
+                    startIcon={item.icon}
+                    whileHover={{ y: -3, boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)' }}
+                    whileTap={{ y: 0, boxShadow: 'none' }}
+                    sx={{ 
+                      mx: 1, 
+                      px: 3,
+                      py: 1.2,
+                      color: isActive(item.path) ? theme.palette.primary.light : alpha(theme.palette.text.primary, 0.8),
+                      fontWeight: isActive(item.path) ? 500 : 400,
+                      position: 'relative',
+                      borderRadius: '12px',
+                      overflow: 'hidden',
+                      '&::after': isActive(item.path) ? {
+                        content: '""',
+                        position: 'absolute',
+                        width: '40%',
+                        height: '3px',
+                        background: 'linear-gradient(90deg, #7C4DFF, #03DAC6)',
+                        borderRadius: '4px',
+                        bottom: '6px',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        transition: 'all 0.3s ease',
+                      } : {},
+                      '&:hover': {
+                        bgcolor: alpha(theme.palette.primary.main, 0.08),
+                        '&::after': isActive(item.path) ? {
+                          width: '60%',
+                        } : {},
+                      },
+                      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                    }}
+                  >
+                    {item.name}
+                  </MotionButton>
+                </Tooltip>
+              </MotionBox>
             ))}
           </Box>
         )}
         
         {/* User menu */}
-        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-          <IconButton 
-            onClick={handleMenuOpen}
-            sx={{ 
-              ml: 1,
-              transition: 'all 0.2s',
-              border: `2px solid ${alpha(theme.palette.primary.main, 0.5)}`,
-              '&:hover': {
-                bgcolor: alpha(theme.palette.primary.main, 0.1),
-                transform: 'scale(1.05)',
-              },
-              p: 0.2,
-            }}
-          >
-            <Avatar 
+        <MotionBox
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ 
+            duration: 0.4, 
+            delay: 0.4,
+            type: "spring", 
+            stiffness: 400, 
+            damping: 15 
+          }}
+          sx={{ display: 'flex', alignItems: 'center' }}
+        >
+          <Tooltip title="User menu" arrow placement="bottom">
+            <MotionIconButton 
+              whileHover={{ scale: 1.1, rotate: 5 }}
+              whileTap={{ scale: 0.95 }}
+              transition={{ type: "spring", stiffness: 400, damping: 17 }}
+              onClick={handleMenuOpen}
               sx={{ 
-                width: 32, 
-                height: 32, 
-                bgcolor: alpha(theme.palette.primary.main, 0.9),
-                boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-                color: 'white',
-                fontSize: '0.9rem',
-                fontWeight: 600
+                ml: 1,
+                border: `2px solid ${alpha(theme.palette.primary.main, 0.5)}`,
+                p: 0.2,
+                background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.05)} 0%, ${alpha(theme.palette.secondary.main, 0.05)} 100%)`,
+                backdropFilter: 'blur(5px)',
+                boxShadow: `0 0 10px ${alpha(theme.palette.primary.main, 0.2)}`,
+                '&:hover': {
+                  border: `2px solid ${theme.palette.primary.main}`,
+                  boxShadow: `0 0 15px ${alpha(theme.palette.primary.main, 0.4)}`,
+                },
+                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
               }}
             >
-              {username ? username.charAt(0).toUpperCase() : 'U'}
-            </Avatar>
-          </IconButton>
+              <Badge
+                overlap="circular"
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                badgeContent={
+                  <Box
+                    sx={{
+                      width: 12,
+                      height: 12,
+                      borderRadius: '50%',
+                      bgcolor: theme.palette.success.main,
+                      border: '2px solid black',
+                      boxShadow: '0 0 5px rgba(0,0,0,0.3)',
+                    }}
+                  />
+                }
+              >
+                <MotionAvatar 
+                  whileHover={{ scale: 1.05 }}
+                  sx={{ 
+                    width: 34, 
+                    height: 34, 
+                    background: 'linear-gradient(135deg, #7C4DFF 0%, #03DAC6 100%)',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                    color: 'white',
+                    fontSize: '1rem',
+                    fontWeight: 600
+                  }}
+                >
+                  {username ? username.charAt(0).toUpperCase() : 'U'}
+                </MotionAvatar>
+              </Badge>
+            </MotionIconButton>
+          </Tooltip>
           
           <Menu
             anchorEl={menuAnchorEl}
@@ -366,45 +511,71 @@ function Navbar() {
             PaperProps={{
               elevation: 5,
               sx: { 
-                minWidth: 200, 
+                minWidth: 220, 
                 mt: 1.5,
-                bgcolor: theme.palette.background.paper,
-                backgroundImage: 'linear-gradient(rgba(30, 36, 50, 0.97), rgba(21, 26, 37, 0.98))',
-                backdropFilter: 'blur(10px)',
-                borderRadius: 2,
+                background: 'linear-gradient(135deg, rgba(26, 35, 50, 0.95) 0%, rgba(18, 26, 41, 0.98) 100%)',
+                backdropFilter: 'blur(20px)',
+                borderRadius: 3,
                 border: '1px solid',
                 borderColor: alpha(theme.palette.divider, 0.08),
-                boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
+                boxShadow: '0 10px 30px rgba(0,0,0,0.25)',
                 overflow: 'hidden',
+                '&::before': {
+                  content: '""',
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  height: '4px',
+                  background: 'linear-gradient(90deg, #7C4DFF, #03DAC6)',
+                  opacity: 1,
+                }
               }
             }}
             transformOrigin={{ horizontal: 'right', vertical: 'top' }}
             anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+            transitionDuration={300}
           >
             <Box sx={{ 
-              p: 2, 
-              bgcolor: alpha(theme.palette.background.paper, 0.4),
+              p: 2.5, 
+              background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.05)} 0%, ${alpha(theme.palette.secondary.main, 0.05)} 100%)`,
               borderBottom: '1px solid',
               borderColor: alpha(theme.palette.divider, 0.1),
             }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                <Avatar
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <MotionAvatar
+                  whileHover={{ scale: 1.1, rotate: 5 }}
+                  whileTap={{ scale: 0.95 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 15 }}
                   sx={{ 
-                    width: 40, 
-                    height: 40, 
-                    bgcolor: theme.palette.primary.main,
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                    width: 45, 
+                    height: 45, 
+                    background: 'linear-gradient(135deg, #7C4DFF 0%, #03DAC6 100%)',
+                    boxShadow: '0 3px 10px rgba(0,0,0,0.2)',
                     mr: 1.5
                   }}
                 >
                   {username ? username.charAt(0).toUpperCase() : 'U'}
-                </Avatar>
+                </MotionAvatar>
                 <Box>
-                  <Typography variant="subtitle2" fontWeight={600}>
+                  <Typography variant="subtitle1" fontWeight={600} letterSpacing={0.3}>
                     {username}
                   </Typography>
-                  <Typography variant="caption" sx={{ color: theme.palette.text.secondary }}>
-                    Signed in
+                  <Typography variant="caption" sx={{ 
+                    color: theme.palette.secondary.light,
+                    display: 'flex',
+                    alignItems: 'center',
+                    '&::before': {
+                      content: '""',
+                      display: 'inline-block',
+                      width: 6,
+                      height: 6,
+                      borderRadius: '50%',
+                      bgcolor: theme.palette.success.main,
+                      mr: 0.8,
+                    }
+                  }}>
+                    Active Session
                   </Typography>
                 </Box>
               </Box>
@@ -416,12 +587,14 @@ function Navbar() {
                 navigate('/profile');
               }}
               sx={{ 
-                p: 1.5,
-                mx: 1,
-                mt: 1,
-                borderRadius: 1,
+                p: 2,
+                mx: 1.5,
+                mt: 1.5,
+                borderRadius: 2,
+                transition: 'all 0.3s ease',
                 '&:hover': {
                   bgcolor: alpha(theme.palette.primary.main, 0.1),
+                  transform: 'translateX(5px)',
                 },
               }}
             >
@@ -438,13 +611,15 @@ function Navbar() {
             <MenuItem 
               onClick={handleLogout}
               sx={{ 
-                p: 1.5,
-                mx: 1,
-                my: 1,
-                borderRadius: 1,
+                p: 2,
+                mx: 1.5,
+                my: 1.5,
+                borderRadius: 2,
+                transition: 'all 0.3s ease',
                 '&:hover': {
                   bgcolor: alpha(theme.palette.error.main, 0.1),
-                  color: theme.palette.error.light
+                  color: theme.palette.error.light,
+                  transform: 'translateX(5px)',
                 },
               }}
             >
@@ -458,9 +633,9 @@ function Navbar() {
               <Typography variant="body2">Logout</Typography>
             </MenuItem>
           </Menu>
-        </Box>
+        </MotionBox>
       </Toolbar>
-    </AppBar>
+    </MotionAppBar>
   );
 }
 

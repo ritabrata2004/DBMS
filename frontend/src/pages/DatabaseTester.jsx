@@ -46,14 +46,14 @@ const darkTheme = createTheme({
   palette: {
     mode: 'dark',
     primary: {
-      main: '#6596EB', // More vibrant blue
-      light: '#96B9FF',
-      dark: '#3A6BC7',
+      main: '#7C4DFF', // Updated to match navbar theme
+      light: '#9F7CFF',
+      dark: '#5A1FFF',
     },
     secondary: {
-      main: '#BB86FC', // Vibrant purple
-      light: '#CFABFF',
-      dark: '#9259F6',
+      main: '#03DAC6', // Updated to match navbar theme
+      light: '#3AEBE0',
+      dark: '#00A99B',
     },
     error: {
       main: '#FF5252',
@@ -76,14 +76,47 @@ const darkTheme = createTheme({
       dark: '#388E3C',
     },
     background: {
-      default: '#151A25', // Darker blue-gray
-      paper: '#1E2432', // Dark blue-gray
+      default: '#171E2A', // Updated to match navbar theme
+      paper: '#1F2736', // Updated to match navbar theme
     },
     text: {
       primary: '#FFFFFF',
       secondary: '#B0B8C8', // Subtle blue-gray tint
     },
     divider: 'rgba(255, 255, 255, 0.09)',
+    // Custom table column colors for the metadata tables
+    tableColumns: {
+      col1: {
+        main: '#7C4DFF',
+        light: 'rgba(124, 77, 255, 0.15)',
+        dark: 'rgba(124, 77, 255, 0.25)',
+      },
+      col2: {
+        main: '#03DAC6',
+        light: 'rgba(3, 218, 198, 0.15)',
+        dark: 'rgba(3, 218, 198, 0.25)',
+      },
+      col3: {
+        main: '#FF5252',
+        light: 'rgba(255, 82, 82, 0.15)',
+        dark: 'rgba(255, 82, 82, 0.25)',
+      },
+      col4: {
+        main: '#FFB74D',
+        light: 'rgba(255, 183, 77, 0.15)',
+        dark: 'rgba(255, 183, 77, 0.25)',
+      },
+      col5: {
+        main: '#29B6F6',
+        light: 'rgba(41, 182, 246, 0.15)',
+        dark: 'rgba(41, 182, 246, 0.25)',
+      },
+      col6: {
+        main: '#66BB6A',
+        light: 'rgba(102, 187, 106, 0.15)',
+        dark: 'rgba(102, 187, 106, 0.25)',
+      },
+    },
   },
   typography: {
     fontFamily: [
@@ -122,19 +155,28 @@ const darkTheme = createTheme({
           '& .MuiOutlinedInput-root': {
             '& fieldset': {
               borderColor: 'rgba(255, 255, 255, 0.15)',
-              transition: 'border-color 0.2s ease-in-out',
+              transition: 'border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
             },
             '&:hover fieldset': {
-              borderColor: 'rgba(255, 255, 255, 0.3)',
+              borderColor: 'rgba(124, 77, 255, 0.5)', // Updated to match theme
             },
             '&.Mui-focused fieldset': {
-              borderColor: '#6596EB',
+              borderColor: '#7C4DFF', // Updated to match theme
+              boxShadow: '0 0 0 2px rgba(124, 77, 255, 0.2)', // Updated to match theme
             },
-            backgroundColor: 'rgba(255, 255, 255, 0.04)',
+            backgroundColor: 'rgba(31, 39, 54, 0.8)',
             borderRadius: 8,
+            transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+            '&:hover': {
+              transform: 'translateY(-2px)',
+              boxShadow: '0 4px 12px rgba(124, 77, 255, 0.15)', // Updated to match theme
+            },
           },
           '& .MuiInputLabel-root': {
-            color: 'rgba(255, 255, 255, 0.6)',
+            color: 'rgba(255, 255, 255, 0.7)',
+            '&.Mui-focused': {
+              color: '#7C4DFF', // Updated to match theme
+            }
           },
           '& .MuiOutlinedInput-input': {
             color: '#fff',
@@ -146,13 +188,14 @@ const darkTheme = createTheme({
     MuiPaper: {
       styleOverrides: {
         root: {
-          backgroundColor: '#1E2432',
+          backgroundColor: '#1F2736', // Updated to match theme
           color: '#fff',
           backgroundImage: 'none',
-          transition: 'box-shadow 0.2s ease-in-out, transform 0.2s ease-in-out',
+          transition: 'box-shadow 0.3s ease-in-out, transform 0.3s ease-in-out',
           boxShadow: '0 3px 10px rgba(0, 0, 0, 0.2)',
           '&:hover': {
-            boxShadow: '0 6px 15px rgba(0, 0, 0, 0.28)',
+            boxShadow: '0 6px 15px rgba(124, 77, 255, 0.2)', // Updated to match theme
+            transform: 'translateY(-4px)',
           },
         },
       },
@@ -164,30 +207,57 @@ const darkTheme = createTheme({
           textTransform: 'none',
           fontWeight: 500,
           boxShadow: 'none',
-          transition: 'all 0.2s ease-in-out',
+          transition: 'all 0.3s ease-in-out',
+          position: 'relative',
+          overflow: 'hidden',
+          '&:after': {
+            content: '""',
+            position: 'absolute',
+            top: '-50%',
+            left: '-50%',
+            width: '200%',
+            height: '200%',
+            background: 'radial-gradient(circle, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 70%)',
+            opacity: 0,
+            transform: 'scale(0.5)',
+            transition: 'opacity 0.5s ease, transform 0.5s ease',
+          },
           '&:hover': {
             boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
             transform: 'translateY(-2px)',
+            '&:after': {
+              opacity: 1,
+              transform: 'scale(1)',
+            }
+          },
+          '&:active': {
+            transform: 'translateY(1px)',
           },
         },
         contained: {
           '&.MuiButton-containedPrimary': {
-            background: 'linear-gradient(45deg, #5581D9 10%, #6596EB 90%)',
+            background: 'linear-gradient(45deg, #5A1FFF 10%, #7C4DFF 90%)', // Updated to match theme
+            '&:hover': {
+              background: 'linear-gradient(45deg, #5A1FFF 30%, #7C4DFF 100%)', // Updated to match theme
+            }
           },
           '&.MuiButton-containedSecondary': {
-            background: 'linear-gradient(45deg, #A05CF9 10%, #BB86FC 90%)',
+            background: 'linear-gradient(45deg, #00A99B 10%, #03DAC6 90%)', // Updated to match theme
+            '&:hover': {
+              background: 'linear-gradient(45deg, #00A99B 30%, #03DAC6 100%)', // Updated to match theme
+            }
           },
           '&.MuiButton-containedSuccess': {
-            background: 'linear-gradient(45deg, #52AA57 10%, #66BB6A 90%)',
+            background: 'linear-gradient(45deg, #388E3C 10%, #66BB6A 90%)',
           },
           '&.MuiButton-containedError': {
-            background: 'linear-gradient(45deg, #E53935 10%, #FF5252 90%)',
+            background: 'linear-gradient(45deg, #C62828 10%, #FF5252 90%)',
           },
           '&.MuiButton-containedInfo': {
-            background: 'linear-gradient(45deg, #0E95D3 10%, #29B6F6 90%)',
+            background: 'linear-gradient(45deg, #0288D1 10%, #29B6F6 90%)',
           },
           '&.MuiButton-containedWarning': {
-            background: 'linear-gradient(45deg, #ED9100 10%, #FFB74D 90%)',
+            background: 'linear-gradient(45deg, #FF9800 10%, #FFB74D 90%)',
           },
         },
         outlined: {
@@ -206,6 +276,8 @@ const darkTheme = createTheme({
           transition: 'all 0.2s ease',
           '&:hover': {
             backgroundColor: 'rgba(255, 255, 255, 0.15)',
+            transform: 'translateY(-2px)',
+            boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
           },
         },
         outlined: {
@@ -226,6 +298,7 @@ const darkTheme = createTheme({
         indicator: {
           height: 3,
           borderRadius: '3px 3px 0 0',
+          background: 'linear-gradient(90deg, #7C4DFF, #03DAC6)', // Updated to match theme
         },
       },
     },
@@ -233,13 +306,14 @@ const darkTheme = createTheme({
       styleOverrides: {
         root: {
           color: 'rgba(255, 255, 255, 0.6)',
-          transition: 'color 0.2s ease-in-out',
+          transition: 'color 0.2s ease-in-out, transform 0.2s ease-in-out',
           '&.Mui-selected': {
             color: '#fff',
             fontWeight: 500,
           },
           '&:hover': {
             color: 'rgba(255, 255, 255, 0.9)',
+            transform: 'translateY(-2px)',
           },
         },
       },
@@ -249,8 +323,8 @@ const darkTheme = createTheme({
         root: {
           transition: 'all 0.2s ease-in-out',
           '&:hover': {
-            backgroundColor: 'rgba(255, 255, 255, 0.1)',
-            transform: 'scale(1.1)',
+            backgroundColor: 'rgba(124, 77, 255, 0.1)', // Updated to match theme
+            transform: 'scale(1.1) rotate(5deg)',
           },
         },
       },
@@ -258,7 +332,10 @@ const darkTheme = createTheme({
     MuiMenuItem: {
       styleOverrides: {
         root: {
-          transition: 'background-color 0.2s ease-in-out',
+          transition: 'background-color 0.2s ease-in-out, transform 0.2s ease-in-out',
+          '&:hover': {
+            transform: 'translateX(5px)',
+          }
         },
       },
     },
@@ -267,6 +344,17 @@ const darkTheme = createTheme({
         paper: {
           borderRadius: 12,
           boxShadow: '0 8px 24px rgba(0, 0, 0, 0.4)',
+          backgroundImage: 'linear-gradient(135deg, #1F2736 0%, #171E2A 100%)',
+          overflow: 'hidden',
+          '&:before': {
+            content: '""',
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '4px',
+            background: 'linear-gradient(90deg, #7C4DFF, #03DAC6)', // Updated to match theme
+          }
         },
       },
     },
@@ -281,10 +369,15 @@ const darkTheme = createTheme({
       styleOverrides: {
         root: {
           borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+          transition: 'background-color 0.2s ease',
+          '&:hover': {
+            backgroundColor: 'rgba(124, 77, 255, 0.05)', // Updated to match theme
+          }
         },
         head: {
           fontWeight: 600,
           color: 'rgba(255, 255, 255, 0.8)',
+          background: 'linear-gradient(90deg, rgba(124, 77, 255, 0.08), rgba(3, 218, 198, 0.08))', // Updated to match theme
         },
       },
     },
@@ -301,7 +394,8 @@ const darkTheme = createTheme({
           transition: 'all 0.2s ease-in-out',
           borderRadius: 8,
           '&:hover': {
-            backgroundColor: 'rgba(255, 255, 255, 0.08)',
+            backgroundColor: 'rgba(124, 77, 255, 0.08)', // Updated to match theme
+            transform: 'translateX(5px)',
           },
         },
       },
@@ -701,7 +795,16 @@ const DatabaseTester = () => {
   return (
     <ThemeProvider theme={darkTheme}>
       <Navbar />
-      <Container maxWidth="xl" className="py-8" sx={{ backgroundColor: '#252525', color: '#fff' }}>
+      <Container 
+        maxWidth="xl" 
+        sx={{ 
+          pt: '84px', // Added top padding to prevent navbar overlap
+          pb: 8,
+          background: 'linear-gradient(180deg, rgba(26, 35, 50, 0.97) 0%, rgba(18, 26, 41, 0.98) 100%)', // Updated to match theme
+          color: '#fff', 
+          minHeight: '100vh'
+        }}
+      >
         <Box display="flex" alignItems="center" mb={3}>
           <IconButton 
             onClick={() => navigate('/databases')} 
@@ -711,16 +814,62 @@ const DatabaseTester = () => {
           >
             <ArrowBackIcon />
           </IconButton>
-          <Typography variant="h4" component="h1" className="font-bold text-blue-700">
-            PostgreSQL Database Manager
+          <Typography variant="h4" component="h1" sx={{ 
+            fontWeight: 600,
+            background: 'linear-gradient(45deg, #7C4DFF, #03DAC6)', // Updated to match theme
+            backgroundSize: '200% auto',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent'
+          }}>
+            Metadata Manager
           </Typography>
         </Box>
         
         {/* Main content area with form and controls */}
         <Box className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
           {/* Database Form Section */}
-          <Paper className="p-6 rounded-lg shadow-md" sx={{ backgroundColor: '#333' }}>
-            <Typography variant="h5" className="mb-4 font-semibold">
+          <Paper className="p-6 rounded-lg shadow-md" sx={{ 
+            background: 'linear-gradient(135deg, #1F2736 0%, #1A2332 100%)',
+            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)',
+            position: 'relative',
+            overflow: 'hidden',
+            border: '1px solid rgba(124, 77, 255, 0.3)',
+            '&::before': {
+              content: '""',
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              height: '6px',
+              background: 'linear-gradient(90deg, #7C4DFF, #03DAC6, #FF5252, #FFB74D)',
+              backgroundSize: '300% 100%',
+              animation: 'gradient-animation 4s ease infinite',
+            },
+            '@keyframes gradient-animation': {
+              '0%': { backgroundPosition: '0% 50%' },
+              '50%': { backgroundPosition: '100% 50%' },
+              '100%': { backgroundPosition: '0% 50%' }
+            },
+            '&::after': {
+              content: '""',
+              position: 'absolute',
+              bottom: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+              background: 'radial-gradient(circle at bottom right, rgba(124, 77, 255, 0.15), transparent 50%)',
+              pointerEvents: 'none',
+            },
+          }}>
+            <Typography variant="h5" className="mb-4 font-semibold" sx={{
+              background: 'linear-gradient(90deg, #7C4DFF, #03DAC6)',
+              backgroundClip: 'text',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              fontWeight: 600,
+              letterSpacing: '0.5px',
+              textShadow: '0 2px 4px rgba(0,0,0,0.2)'
+            }}>
               Add Database Connection
             </Typography>
             
@@ -739,6 +888,21 @@ const DatabaseTester = () => {
                 fullWidth
                 required
                 variant="outlined"
+                InputLabelProps={{
+                  style: { color: '#03DAC6' }
+                }}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    background: 'rgba(31, 39, 54, 0.6)',
+                    backdropFilter: 'blur(8px)',
+                    '&:hover': {
+                      boxShadow: '0 4px 12px rgba(124, 77, 255, 0.25)'
+                    },
+                    '&.Mui-focused': {
+                      boxShadow: '0 0 0 2px rgba(124, 77, 255, 0.4)'
+                    }
+                  }
+                }}
               />
               
               <TextField
@@ -750,6 +914,21 @@ const DatabaseTester = () => {
                 multiline
                 rows={2}
                 variant="outlined"
+                InputLabelProps={{
+                  style: { color: '#03DAC6' }
+                }}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    background: 'rgba(31, 39, 54, 0.6)',
+                    backdropFilter: 'blur(8px)',
+                    '&:hover': {
+                      boxShadow: '0 4px 12px rgba(124, 77, 255, 0.25)'
+                    },
+                    '&.Mui-focused': {
+                      boxShadow: '0 0 0 2px rgba(124, 77, 255, 0.4)'
+                    }
+                  }
+                }}
               />
               
               <Box className="grid grid-cols-2 gap-4">
@@ -761,6 +940,21 @@ const DatabaseTester = () => {
                   fullWidth
                   required
                   variant="outlined"
+                  InputLabelProps={{
+                    style: { color: '#7C4DFF' }
+                  }}
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      background: 'rgba(31, 39, 54, 0.6)',
+                      backdropFilter: 'blur(8px)',
+                      '&:hover': {
+                        boxShadow: '0 4px 12px rgba(124, 77, 255, 0.25)'
+                      },
+                      '&.Mui-focused': {
+                        boxShadow: '0 0 0 2px rgba(124, 77, 255, 0.4)'
+                      }
+                    }
+                  }}
                 />
                 
                 <TextField
@@ -772,6 +966,21 @@ const DatabaseTester = () => {
                   fullWidth
                   required
                   variant="outlined"
+                  InputLabelProps={{
+                    style: { color: '#7C4DFF' }
+                  }}
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      background: 'rgba(31, 39, 54, 0.6)',
+                      backdropFilter: 'blur(8px)',
+                      '&:hover': {
+                        boxShadow: '0 4px 12px rgba(124, 77, 255, 0.25)'
+                      },
+                      '&.Mui-focused': {
+                        boxShadow: '0 0 0 2px rgba(124, 77, 255, 0.4)'
+                      }
+                    }
+                  }}
                 />
               </Box>
               
@@ -783,6 +992,21 @@ const DatabaseTester = () => {
                 fullWidth
                 required
                 variant="outlined"
+                InputLabelProps={{
+                  style: { color: '#03DAC6' }
+                }}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    background: 'rgba(31, 39, 54, 0.6)',
+                    backdropFilter: 'blur(8px)',
+                    '&:hover': {
+                      boxShadow: '0 4px 12px rgba(3, 218, 198, 0.25)'
+                    },
+                    '&.Mui-focused': {
+                      boxShadow: '0 0 0 2px rgba(3, 218, 198, 0.4)'
+                    }
+                  }
+                }}
               />
               
               <TextField
@@ -793,6 +1017,21 @@ const DatabaseTester = () => {
                 fullWidth
                 required
                 variant="outlined"
+                InputLabelProps={{
+                  style: { color: '#FFB74D' }
+                }}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    background: 'rgba(31, 39, 54, 0.6)',
+                    backdropFilter: 'blur(8px)',
+                    '&:hover': {
+                      boxShadow: '0 4px 12px rgba(255, 183, 77, 0.25)'
+                    },
+                    '&.Mui-focused': {
+                      boxShadow: '0 0 0 2px rgba(255, 183, 77, 0.4)'
+                    }
+                  }
+                }}
               />
               
               <TextField
@@ -804,15 +1043,45 @@ const DatabaseTester = () => {
                 fullWidth
                 required
                 variant="outlined"
+                InputLabelProps={{
+                  style: { color: '#FF5252' }
+                }}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    background: 'rgba(31, 39, 54, 0.6)',
+                    backdropFilter: 'blur(8px)',
+                    '&:hover': {
+                      boxShadow: '0 4px 12px rgba(255, 82, 82, 0.25)'
+                    },
+                    '&.Mui-focused': {
+                      boxShadow: '0 0 0 2px rgba(255, 82, 82, 0.4)'
+                    }
+                  }
+                }}
               />
               
               <Button
                 type="submit"
                 variant="contained"
-                color="primary"
                 fullWidth
                 disabled={loading}
                 className="py-3"
+                sx={{
+                  background: 'linear-gradient(45deg, #7C4DFF, #03DAC6)',
+                  backgroundSize: '200% 100%',
+                  transition: 'all 0.3s ease',
+                  marginTop: '24px',
+                  height: '48px',
+                  fontWeight: 600,
+                  textTransform: 'none',
+                  fontSize: '16px',
+                  boxShadow: '0 4px 10px rgba(124, 77, 255, 0.3)',
+                  '&:hover': {
+                    backgroundPosition: 'right center',
+                    boxShadow: '0 6px 15px rgba(124, 77, 255, 0.4)',
+                    transform: 'translateY(-3px)'
+                  }
+                }}
               >
                 {loading ? <CircularProgress size={24} color="inherit" /> : "Add Database"}
               </Button>
@@ -822,7 +1091,10 @@ const DatabaseTester = () => {
           {/* Database List & Operations Section */}
           <Box className="space-y-6">
             {/* Database Selection */}
-            <Paper className="p-6 rounded-lg shadow-md" sx={{ backgroundColor: '#333' }}>
+            <Paper className="p-6 rounded-lg shadow-md" sx={{ 
+              backgroundColor: '#1F2736',
+              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)'
+            }}>
               <Typography variant="h5" className="mb-4 font-semibold">
                 Your Databases
               </Typography>
@@ -841,7 +1113,7 @@ const DatabaseTester = () => {
                         <Typography className="font-semibold">
                           {db.name}
                         </Typography>
-                        <Typography variant="body2" className="text-gray-600">
+                        <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.6)' }}>
                           {db.host}:{db.port}/{db.database_name}
                         </Typography>
                       </Box>
@@ -926,7 +1198,10 @@ const DatabaseTester = () => {
             
             {/* Tabs navigation for different operations */}
             {selectedDb && (
-              <Paper className="rounded-lg shadow-md" sx={{ backgroundColor: '#333' }}>
+              <Paper className="rounded-lg shadow-md" sx={{ 
+                backgroundColor: '#1F2736',
+                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)'
+              }}>
                 <Tabs 
                   value={activeTab} 
                   onChange={(e, newValue) => setActiveTab(newValue)}
@@ -935,7 +1210,7 @@ const DatabaseTester = () => {
                     borderBottom: 1, 
                     borderColor: 'divider',
                     "& .MuiTabs-indicator": {
-                      backgroundColor: '#90caf9'
+                      background: 'linear-gradient(90deg, #7C4DFF, #03DAC6)', // Updated to match theme
                     }
                   }}
                 >
@@ -973,7 +1248,7 @@ const DatabaseTester = () => {
                           className="font-mono"
                           sx={{ 
                             "& .MuiOutlinedInput-root": { 
-                              backgroundColor: "#444" 
+                              backgroundColor: "rgba(31, 39, 54, 0.8)" 
                             } 
                           }}
                         />
@@ -1061,7 +1336,13 @@ const DatabaseTester = () => {
                       </Typography>
                       
                       <form onSubmit={handleSearch} className="mb-6">
-                        <Box className="flex">
+                        <Box sx={{ 
+                          display: 'flex', 
+                          alignItems: 'stretch', // Align items to make them the same height
+                          '& .MuiInputBase-root': {
+                            height: '100%' // Ensure consistent height
+                          }
+                        }}>
                           <TextField
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
@@ -1069,11 +1350,10 @@ const DatabaseTester = () => {
                             fullWidth
                             variant="outlined"
                             required
-                            className="rounded-r-none"
                             sx={{ 
                               "& .MuiOutlinedInput-root": { 
-                                backgroundColor: "#444",
-                                borderRadius: '4px 0 0 4px'
+                                backgroundColor: "rgba(31, 39, 54, 0.8)",
+                                borderRadius: '8px 0 0 8px'
                               } 
                             }}
                           />
@@ -1082,8 +1362,11 @@ const DatabaseTester = () => {
                             variant="contained"
                             color="primary"
                             disabled={metadataLoading}
-                            className="rounded-l-none h-auto"
-                            sx={{ borderRadius: '0 4px 4px 0' }}
+                            sx={{ 
+                              borderRadius: '0 8px 8px 0',
+                              minWidth: '100px',
+                              height: 'auto' // Match height of TextField
+                            }}
                           >
                             {metadataLoading ? <CircularProgress size={24} /> : "Search"}
                           </Button>
@@ -1102,7 +1385,10 @@ const DatabaseTester = () => {
           <Box className="mt-8 w-full">
             {/* Query Results Table */}
             {activeTab === 0 && queryResult && (
-              <Paper className="w-full rounded-lg shadow-md overflow-hidden" sx={{ backgroundColor: '#333' }}>
+              <Paper className="w-full rounded-lg shadow-md overflow-hidden" sx={{ 
+                backgroundColor: '#1F2736',
+                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)'
+              }}>
                 <Box className="p-4 border-b border-gray-700">
                   <Typography variant="subtitle1" className="font-semibold mb-2">
                     Results
@@ -1129,7 +1415,7 @@ const DatabaseTester = () => {
                       </thead>
                       <tbody className="bg-gray-700 divide-y divide-gray-600">
                         {queryResult.rows.map((row, rowIdx) => (
-                          <tr key={rowIdx}>
+                          <tr key={rowIdx} className={rowIdx % 2 === 0 ? "bg-gray-800" : "bg-gray-700"}>
                             {row.map((cell, cellIdx) => (
                               <td
                                 key={cellIdx}
@@ -1157,7 +1443,10 @@ const DatabaseTester = () => {
             {activeTab === 1 && schemaData && schemaData.length > 0 && (
               <Box className="space-y-6">
                 {schemaData.map((table) => (
-                  <Paper key={table.id} variant="outlined" className="overflow-hidden w-full" sx={{ backgroundColor: '#333', borderColor: 'rgba(255, 255, 255, 0.12)' }}>
+                  <Paper key={table.id} variant="outlined" className="overflow-hidden w-full" sx={{ 
+                    backgroundColor: '#1F2736', 
+                    borderColor: 'rgba(255, 255, 255, 0.12)'
+                  }}>
                     <Box className="bg-gray-800 p-3 border-b border-gray-700">
                       <Box className="flex justify-between items-start">
                         <Box className="flex-grow">
@@ -1168,7 +1457,7 @@ const DatabaseTester = () => {
                               size="small"
                               variant="outlined"
                               className="ml-2 text-xs"
-                              sx={{ backgroundColor: '#555' }}
+                              sx={{ backgroundColor: 'rgba(31, 39, 54, 0.8)' }}
                             />
                           </Typography>
                           
@@ -1185,7 +1474,7 @@ const DatabaseTester = () => {
                                 variant="outlined"
                                 sx={{ 
                                   "& .MuiOutlinedInput-root": { 
-                                    backgroundColor: "#555" 
+                                    backgroundColor: "rgba(31, 39, 54, 0.8)" 
                                   } 
                                 }}
                               />
@@ -1251,47 +1540,83 @@ const DatabaseTester = () => {
                       <table className="min-w-full divide-y divide-gray-700">
                         <thead>
                           <tr className="bg-gray-800">
-                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                            <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider"
+                                style={{ color: '#7C4DFF', borderBottom: '2px solid #7C4DFF' }}>
                               Column
                             </th>
-                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                            <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider"
+                                style={{ color: '#03DAC6', borderBottom: '2px solid #03DAC6' }}>
                               Type
                             </th>
-                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                            <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider"
+                                style={{ color: '#FF5252', borderBottom: '2px solid #FF5252' }}>
                               Nullable
                             </th>
-                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                            <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider"
+                                style={{ color: '#FFB74D', borderBottom: '2px solid #FFB74D' }}>
                               Key
                             </th>
-                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                            <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider"
+                                style={{ color: '#29B6F6', borderBottom: '2px solid #29B6F6' }}>
                               Description
                             </th>
-                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                            <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider"
+                                style={{ color: '#66BB6A', borderBottom: '2px solid #66BB6A' }}>
                               Actions
                             </th>
                           </tr>
                         </thead>
-                        <tbody className="bg-gray-700 divide-y divide-gray-600">
-                          {table.columns.map((column) => (
+                        <tbody>
+                          {table.columns.map((column, colIdx) => (
                             <tr key={column.id}>
-                              <td className="px-3 py-2 text-sm font-medium text-gray-200">
+                              <td className="px-3 py-2 text-sm font-medium"
+                                  style={{ 
+                                    backgroundColor: colIdx % 2 === 0 
+                                      ? 'rgba(124, 77, 255, 0.25)'
+                                      : 'rgba(124, 77, 255, 0.15)',
+                                    color: '#7C4DFF'
+                                  }}>
                                 {column.name}
                               </td>
-                              <td className="px-3 py-2 text-sm text-gray-300">
+                              <td className="px-3 py-2 text-sm"
+                                  style={{ 
+                                    backgroundColor: colIdx % 2 === 0 
+                                      ? 'rgba(3, 218, 198, 0.25)'
+                                      : 'rgba(3, 218, 198, 0.15)',
+                                    color: '#03DAC6'
+                                  }}>
                                 {column.data_type}
                               </td>
-                              <td className="px-3 py-2 text-sm text-gray-300">
+                              <td className="px-3 py-2 text-sm"
+                                  style={{ 
+                                    backgroundColor: colIdx % 2 === 0 
+                                      ? 'rgba(255, 82, 82, 0.25)'
+                                      : 'rgba(255, 82, 82, 0.15)',
+                                    color: '#FF5252'
+                                  }}>
                                 {column.is_nullable ? "Yes" : "No"}
                               </td>
-                              <td className="px-3 py-2 text-sm text-gray-300">
+                              <td className="px-3 py-2 text-sm"
+                                  style={{ 
+                                    backgroundColor: colIdx % 2 === 0 
+                                      ? 'rgba(255, 183, 77, 0.25)'
+                                      : 'rgba(255, 183, 77, 0.15)',
+                                    color: '#FFB74D'
+                                  }}>
                                 {column.is_primary_key && (
-                                  <Chip label="PK" size="small" color="primary" variant="outlined" className="mr-1" sx={{ backgroundColor: '#555' }} />
+                                  <Chip label="PK" size="small" color="primary" variant="outlined" className="mr-1" sx={{ backgroundColor: 'rgba(31, 39, 54, 0.8)' }} />
                                 )}
                                 {column.is_foreign_key && (
-                                  <Chip label="FK" size="small" color="secondary" variant="outlined" sx={{ backgroundColor: '#555' }} />
+                                  <Chip label="FK" size="small" color="secondary" variant="outlined" sx={{ backgroundColor: 'rgba(31, 39, 54, 0.8)' }} />
                                 )}
                               </td>
-                              <td className="px-3 py-2 text-sm text-gray-300">
+                              <td className="px-3 py-2 text-sm"
+                                  style={{ 
+                                    backgroundColor: colIdx % 2 === 0 
+                                      ? 'rgba(41, 182, 246, 0.25)'
+                                      : 'rgba(41, 182, 246, 0.15)',
+                                    color: '#29B6F6'
+                                  }}>
                                 {editingDescription === `column_${column.id}` ? (
                                   <TextField
                                     value={editDescription}
@@ -1303,7 +1628,7 @@ const DatabaseTester = () => {
                                     variant="outlined"
                                     sx={{ 
                                       "& .MuiOutlinedInput-root": { 
-                                        backgroundColor: "#555" 
+                                        backgroundColor: "rgba(31, 39, 54, 0.8)" 
                                       } 
                                     }}
                                   />
@@ -1311,7 +1636,13 @@ const DatabaseTester = () => {
                                   column.description || "-"
                                 )}
                               </td>
-                              <td className="px-3 py-2 text-sm text-gray-300">
+                              <td className="px-3 py-2 text-sm"
+                                  style={{ 
+                                    backgroundColor: colIdx % 2 === 0 
+                                      ? 'rgba(102, 187, 106, 0.25)'
+                                      : 'rgba(102, 187, 106, 0.15)',
+                                    color: '#66BB6A'
+                                  }}>
                                 {editingDescription === `column_${column.id}` ? (
                                   <Box className="flex gap-1">
                                     <Tooltip title="Save">
@@ -1354,7 +1685,7 @@ const DatabaseTester = () => {
                                     <IconButton
                                       size="small"
                                       onClick={() => handleEditDescription('column', column.id, column.description || "")}
-                                      sx={{ color: 'rgba(255, 255, 255, 0.7)' }}
+                                      style={{ color: '#66BB6A' }}
                                     >
                                       <EditIcon fontSize="small" />
                                     </IconButton>
@@ -1373,7 +1704,10 @@ const DatabaseTester = () => {
             
             {/* Relationships Table */}
             {activeTab === 2 && relationshipData && relationshipData.length > 0 && (
-              <Paper className="overflow-hidden w-full rounded-lg shadow-md" sx={{ backgroundColor: '#333' }}>
+              <Paper className="overflow-hidden w-full rounded-lg shadow-md" sx={{ 
+                backgroundColor: '#1F2736',
+                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)'
+              }}>
                 <Box className="p-4 border-b border-gray-700">
                   <Typography variant="subtitle1" className="font-semibold">
                     Table Relationships
@@ -1383,45 +1717,80 @@ const DatabaseTester = () => {
                   <table className="min-w-full divide-y divide-gray-700">
                     <thead className="bg-gray-800">
                       <tr>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                        <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider"
+                            style={{ color: '#7C4DFF', borderBottom: '2px solid #7C4DFF' }}>
                           From Table
                         </th>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                        <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider"
+                            style={{ color: '#03DAC6', borderBottom: '2px solid #03DAC6' }}>
                           From Column
                         </th>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                        <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider"
+                            style={{ color: '#FF5252', borderBottom: '2px solid #FF5252' }}>
                           Relationship
                         </th>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                        <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider"
+                            style={{ color: '#FFB74D', borderBottom: '2px solid #FFB74D' }}>
                           To Table
                         </th>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                        <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider"
+                            style={{ color: '#29B6F6', borderBottom: '2px solid #29B6F6' }}>
                           To Column
                         </th>
                       </tr>
                     </thead>
-                    <tbody className="bg-gray-700 divide-y divide-gray-600">
-                      {relationshipData.map((rel) => (
+                    <tbody>
+                      {relationshipData.map((rel, relIdx) => (
                         <tr key={rel.id}>
-                          <td className="px-3 py-2 text-sm text-gray-300">
+                          <td className="px-3 py-2 text-sm"
+                              style={{ 
+                                backgroundColor: relIdx % 2 === 0 
+                                  ? 'rgba(124, 77, 255, 0.25)'
+                                  : 'rgba(124, 77, 255, 0.15)',
+                                color: '#7C4DFF'
+                              }}>
                             {rel.from_schema}.{rel.from_table}
                           </td>
-                          <td className="px-3 py-2 text-sm text-gray-300">
+                          <td className="px-3 py-2 text-sm"
+                              style={{ 
+                                backgroundColor: relIdx % 2 === 0 
+                                  ? 'rgba(3, 218, 198, 0.25)'
+                                  : 'rgba(3, 218, 198, 0.15)',
+                                color: '#03DAC6'
+                              }}>
                             {rel.from_column}
                           </td>
-                          <td className="px-3 py-2 text-sm text-gray-300">
+                          <td className="px-3 py-2 text-sm"
+                              style={{ 
+                                backgroundColor: relIdx % 2 === 0 
+                                  ? 'rgba(255, 82, 82, 0.25)'
+                                  : 'rgba(255, 82, 82, 0.15)',
+                                color: '#FF5252'
+                              }}>
                             <Chip
                               label={rel.relationship_type}
                               size="small"
                               color="primary"
                               variant="outlined"
-                              sx={{ backgroundColor: '#555' }}
+                              sx={{ backgroundColor: 'rgba(31, 39, 54, 0.8)' }}
                             />
                           </td>
-                          <td className="px-3 py-2 text-sm text-gray-300">
+                          <td className="px-3 py-2 text-sm"
+                              style={{ 
+                                backgroundColor: relIdx % 2 === 0 
+                                  ? 'rgba(255, 183, 77, 0.25)'
+                                  : 'rgba(255, 183, 77, 0.15)',
+                                color: '#FFB74D'
+                              }}>
                             {rel.to_schema}.{rel.to_table}
                           </td>
-                          <td className="px-3 py-2 text-sm text-gray-300">
+                          <td className="px-3 py-2 text-sm"
+                              style={{ 
+                                backgroundColor: relIdx % 2 === 0 
+                                  ? 'rgba(41, 182, 246, 0.25)'
+                                  : 'rgba(41, 182, 246, 0.15)',
+                                color: '#29B6F6'
+                              }}>
                             {rel.to_column}
                           </td>
                         </tr>
@@ -1434,7 +1803,10 @@ const DatabaseTester = () => {
             
             {/* Search Results */}
             {activeTab === 3 && searchResults && (
-              <Paper className="w-full rounded-lg shadow-md p-4" sx={{ backgroundColor: '#333' }}>
+              <Paper className="w-full rounded-lg shadow-md p-4" sx={{ 
+                backgroundColor: '#1F2736',
+                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)'
+              }}>
                 <Typography variant="subtitle1" className="font-semibold mb-4">
                   Search Results
                 </Typography>
@@ -1446,7 +1818,10 @@ const DatabaseTester = () => {
                 ) : (
                   <Box className="space-y-3">
                     {searchResults.map((result, idx) => (
-                      <Paper key={idx} variant="outlined" className="p-3" sx={{ backgroundColor: '#444', borderColor: 'rgba(255, 255, 255, 0.12)' }}>
+                      <Paper key={idx} variant="outlined" className="p-3" sx={{ 
+                        backgroundColor: 'rgba(31, 39, 54, 0.8)', 
+                        borderColor: 'rgba(255, 255, 255, 0.12)'
+                      }}>
                         {result.type === 'table' ? (
                           <Box>
                             <Box className="flex items-center">
@@ -1455,7 +1830,7 @@ const DatabaseTester = () => {
                                 size="small"
                                 color="primary"
                                 className="mr-2"
-                                sx={{ backgroundColor: '#555' }}
+                                sx={{ backgroundColor: 'rgba(31, 39, 54, 0.8)' }}
                               />
                               <Typography variant="subtitle2">
                                 {result.schema}.{result.name}
@@ -1475,7 +1850,7 @@ const DatabaseTester = () => {
                                 size="small"
                                 color="secondary"
                                 className="mr-2"
-                                sx={{ backgroundColor: '#555' }}
+                                sx={{ backgroundColor: 'rgba(31, 39, 54, 0.8)' }}
                               />
                               <Typography variant="subtitle2">
                                 {result.schema}.{result.table_name}.{result.name}
@@ -1524,7 +1899,7 @@ const DatabaseTester = () => {
           aria-labelledby="delete-dialog-title"
           PaperProps={{
             sx: {
-              backgroundColor: '#333',
+              backgroundColor: '#1F2736',
               color: '#fff'
             }
           }}

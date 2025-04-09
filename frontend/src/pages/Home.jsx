@@ -17,7 +17,12 @@ import {
   InputAdornment,
   Avatar,
   Fade,
-  alpha
+  alpha,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
 } from "@mui/material";
 import SendIcon from '@mui/icons-material/Send';
 import LogoutIcon from '@mui/icons-material/Logout';
@@ -25,10 +30,13 @@ import MenuIcon from '@mui/icons-material/Menu';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
 import PersonIcon from '@mui/icons-material/Person';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import DeleteIcon from '@mui/icons-material/Delete';
 import { useNavigate, useLocation } from 'react-router-dom';
 import SessionSelector from "../components/SessionSelector";
 import LoadingIndicator from "../components/LoadingIndicator";
 import Navbar from "../components/Navbar";
+import PopupResult from "../components/PopupResult";
 
 function Home() {
     const theme = useTheme();
@@ -38,6 +46,12 @@ function Home() {
     const [response, setResponse] = useState("");
     const [loading, setLoading] = useState(false);
     const [initialLoading, setInitialLoading] = useState(true);
+    const [generatedSql, setGeneratedSql] = useState("");
+    const [showSqlControls, setShowSqlControls] = useState(false);
+    const [showResultPopup, setShowResultPopup] = useState(false);
+    const [queryResult, setQueryResult] = useState(null);
+    const [currentNaturalQuery, setCurrentNaturalQuery] = useState(""); // New state for storing natural language query
+    const [historicQueryData, setHistoricQueryData] = useState(null); // Store historic query data for popup
     const navigate = useNavigate();
     const messagesEndRef = useRef(null);
     const messagesContainerRef = useRef(null);
@@ -48,7 +62,7 @@ function Home() {
     const [drawerOpen, setDrawerOpen] = useState(false);
 
     // Sidebar width for calculations
-    const sidebarWidth = 280;
+    const sidebarWidth = 320;
     
     // On component mount, we need to either load the user's most recent session
     // or create a new one if none exists
@@ -135,56 +149,36 @@ function Home() {
                 throw new Error("No database associated with this session");
             }
             
-            // Step 1: Generate SQL from natural language query
-            const sqlGenResponse = await api.generateSqlFromNL(query, databaseId);
+            // Store the current query for later use
+            const currentQuery = query;
+            
+            // Generate SQL from natural language query
+            const sqlGenResponse = await api.generateSqlFromNL(currentQuery, databaseId);
             
             // Access the correct field name 'sql_query' instead of 'sql'
-            let generatedSql = sqlGenResponse.data.sql_query;
+            let generatedSqlQuery = sqlGenResponse.data.sql_query;
             
             // Clean SQL query by removing markdown code blocks if present
-            generatedSql = cleanSqlQuery(generatedSql);
+            generatedSqlQuery = cleanSqlQuery(generatedSqlQuery);
             
-            console.log("Generated SQL:", generatedSql);
+            console.log("Generated SQL:", generatedSqlQuery);
             
-            // Step 2: Execute the generated SQL
-            console.log("Executing SQL on database ID:", databaseId);
-            const executionResponse = await api.executeSqlQuery(databaseId, generatedSql);
+            // Set the generated SQL and show controls
+            setGeneratedSql(generatedSqlQuery);
+            setShowSqlControls(true);
             
-            console.log("Query execution success:", executionResponse.data.success);
-            
-            // Format the response to display the generated SQL and the results
-            const formattedResponse = `
-**Generated SQL:**
-\`\`\`
-${generatedSql}
-\`\`\`
-
-**Results:**
-${formatQueryResults(executionResponse.data)}
-`;
-            
-            console.log("Formatted response:", formattedResponse);
-            
-            // Step 3: Save the query and response to the current session
-            await api.addQueryToSession(currentSessionId, query, formattedResponse);
-            
-            // Update the local state to show the response
-            setResponse(formattedResponse);
+            // Store the natural language query for execution
+            setCurrentNaturalQuery(currentQuery);
             
             // Clear the input field
             setQuery("");
-            
-            // Reload the session to get the updated queries
-            loadSession(currentSessionId);
         } catch (error) {
-            console.error("Error processing query:", error);
+            console.error("Error generating SQL query:", error);
             
             // Create an error message that's user-friendly
-            let errorMessage = "An error occurred while processing your query.";
+            let errorMessage = "An error occurred while generating the SQL query.";
             
             if (error.response) {
-                // The request was made and the server responded with a status code
-                // that falls out of the range of 2xx
                 if (error.response.data && error.response.data.detail) {
                     errorMessage = `Error: ${error.response.data.detail}`;
                 } else if (error.response.data && error.response.data.error) {
@@ -207,12 +201,168 @@ ${formatQueryResults(executionResponse.data)}
         }
     };
     
+    // Execute the generated SQL query
+    const executeGeneratedSql = async () => {
+        if (!generatedSql || !currentSessionId) return;
+        
+        setLoading(true);
+        try {
+            // Get the database ID from the current session
+            const sessionResponse = await api.getSession(currentSessionId);
+            const databaseId = sessionResponse.data.database_id;
+            
+            // Execute the generated SQL
+            console.log("Executing SQL on database ID:", databaseId);
+            const executionResponse = await api.executeSqlQuery(databaseId, generatedSql);
+            
+            console.log("Query execution success:", executionResponse.data.success);
+            
+            // Store the query results
+            setQueryResult(executionResponse.data);
+            
+            // Format the response to display the generated SQL and the results
+            const formattedResponse = `
+**Generated SQL:**
+\`\`\`
+${generatedSql}
+\`\`\`
+
+**Results:**
+${formatQueryResults(executionResponse.data)}
+`;
+            
+            // Save the query and response to the current session
+            // Use the stored natural language query instead of the empty query state
+            await api.addQueryToSession(currentSessionId, currentNaturalQuery, formattedResponse);
+            
+            // Update the local state to show the response
+            setResponse(formattedResponse);
+            
+            // Show the result popup
+            setShowResultPopup(true);
+            
+            // Reset the SQL controls
+            setShowSqlControls(false);
+            
+            // Reload the session to get the updated queries
+            loadSession(currentSessionId);
+        } catch (error) {
+            console.error("Error executing query:", error);
+            
+            // Create an error message that's user-friendly
+            let errorMessage = "An error occurred while executing the SQL query.";
+            
+            if (error.response) {
+                if (error.response.data && error.response.data.detail) {
+                    errorMessage = `Error: ${error.response.data.detail}`;
+                } else if (error.response.data && error.response.data.error) {
+                    errorMessage = `Error: ${error.response.data.error}`;
+                } else {
+                    errorMessage = `Error: ${error.response.status} - ${error.response.statusText}`;
+                }
+            } else if (error.message) {
+                errorMessage = `Error: ${error.message}`;
+            }
+            
+            // Save the error message as a response
+            await api.addQueryToSession(currentSessionId, query, errorMessage);
+            setResponse(errorMessage);
+            
+            // Reload the session to get the updated queries
+            loadSession(currentSessionId);
+        } finally {
+            setLoading(false);
+        }
+    };
+    
+    // Discard the generated SQL
+    const discardGeneratedSql = () => {
+        setGeneratedSql("");
+        setShowSqlControls(false);
+    };
+    
+    // Copy text to clipboard
+    const copyToClipboard = (text) => {
+        navigator.clipboard.writeText(text)
+            .then(() => {
+                // Could show a temporary "Copied!" notification here
+                console.log("Text copied to clipboard");
+            })
+            .catch(err => {
+                console.error("Could not copy text: ", err);
+            });
+    };
+    
     // Helper function to clean SQL query by removing markdown code block markers
     const cleanSqlQuery = (sql) => {
         if (!sql) return sql;
         
         // Remove ```sql and ``` markers if present
         return sql.replace(/```sql\s*/g, '').replace(/```\s*$/g, '').replace(/^```\s*/g, '').replace(/\s*```$/g, '').trim();
+    };
+
+    // Helper function to generate a compact summary of query results
+    const generateResultsSummary = (responseText) => {
+        if (!responseText) return { previewText: "No results available", rowCount: 0 };
+        
+        // Parse the results from markdown
+        const { sql, results } = parseResultsFromMarkdown(responseText);
+        
+        // If there's an error or no results
+        if (!results || !results.success) {
+            const errorMatch = responseText.match(/Query failed:\s*(.*)/);
+            const errorMessage = errorMatch ? errorMatch[1].trim() : "Query failed";
+            return { previewText: errorMessage, rowCount: 0, hasError: true };
+        }
+        
+        // If there are no rows
+        if (!results.rows || results.rows.length === 0) {
+            return { previewText: "Query executed successfully. No records found.", rowCount: 0 };
+        }
+        
+        // Get row count
+        const rowCount = results.rows.length;
+        
+        // Generate a more detailed preview with column names and values from first few rows
+        let previewText = "";
+        
+        // Show SQL preview first (truncated)
+        if (sql) {
+            const sqlPreview = sql.length > 70 ? sql.substring(0, 70) + "..." : sql;
+            previewText += `SQL: ${sqlPreview}\n\n`;
+        }
+        
+        // Add row count information
+        previewText += `Results: ${rowCount} ${rowCount === 1 ? 'row' : 'rows'} returned\n\n`;
+        
+        // Show column headers (up to 4)
+        const maxColumnsToShow = Math.min(4, results.columns.length);
+        const columnHeaders = results.columns.slice(0, maxColumnsToShow);
+        if (results.columns.length > maxColumnsToShow) {
+            columnHeaders.push("...");
+        }
+        previewText += `${columnHeaders.join(" | ")}\n`;
+        
+        // Show first 2 rows of data
+        const rowsToShow = Math.min(2, results.rows.length);
+        for (let i = 0; i < rowsToShow; i++) {
+            const rowValues = results.rows[i].slice(0, maxColumnsToShow).map(val => 
+                val === null ? 'NULL' : String(val).length > 15 ? String(val).substring(0, 15) + "..." : String(val)
+            );
+            
+            if (results.columns.length > maxColumnsToShow) {
+                rowValues.push("...");
+            }
+            
+            previewText += `${rowValues.join(" | ")}\n`;
+        }
+        
+        // If there are more rows, indicate it
+        if (results.rows.length > 2) {
+            previewText += `... and ${results.rows.length - 2} more rows`;
+        }
+        
+        return { previewText, rowCount, sql };
     };
 
     // Helper function to format query results for display
@@ -252,6 +402,111 @@ ${formatQueryResults(executionResponse.data)}
         
         console.log("Generated markdown table:", tableMarkdown);
         return tableMarkdown;
+    };
+
+    // Helper function to extract SQL from previous response markdown
+    const extractSqlFromMarkdown = (responseText) => {
+        if (!responseText) return '';
+        
+        // Look for SQL code block
+        const sqlBlockRegex = /```(?:sql)?\s*([\s\S]*?)```/;
+        const match = responseText.match(sqlBlockRegex);
+        
+        if (match && match[1]) {
+            return match[1].trim();
+        }
+        
+        return '';
+    };
+    
+    // Helper function to parse previous query results from markdown
+    const parseResultsFromMarkdown = (responseText) => {
+        if (!responseText) return null;
+        
+        // Extract SQL
+        const sql = extractSqlFromMarkdown(responseText);
+        
+        // Create a mock result object that matches the expected structure
+        const mockResult = {
+            success: true,
+            columns: [],
+            rows: [],
+            execution_time: null
+        };
+        
+        // Try to find the results section
+        const resultsRegex = /\*\*Results:\*\*([\s\S]*?)(?:$|(?:\n\n))/;
+        const resultsMatch = responseText.match(resultsRegex);
+        
+        if (resultsMatch && resultsMatch[1]) {
+            const resultsText = resultsMatch[1].trim();
+            
+            // Check for error messages
+            if (resultsText.includes('Query failed:') || resultsText.includes('No results')) {
+                mockResult.success = false;
+                mockResult.status = resultsText.replace('Query failed:', '').trim();
+                return { sql, results: mockResult };
+            }
+            
+            // Try to parse markdown table
+            const tableRegex = /\|\s*(.*?)\s*\|\n\|\s*[-:\s|]*\|\n([\s\S]*)/;
+            const tableMatch = resultsText.match(tableRegex);
+            
+            if (tableMatch) {
+                // Parse headers
+                mockResult.columns = tableMatch[1].split('|').map(header => header.trim());
+                
+                // Parse rows
+                const rowsText = tableMatch[2];
+                const rowLines = rowsText.split('\n').filter(line => line.trim().startsWith('|'));
+                
+                mockResult.rows = rowLines.map(line => {
+                    // Remove first and last | and split by |
+                    const cells = line.trim()
+                        .substring(1, line.length - 1)
+                        .split('|')
+                        .map(cell => {
+                            const trimmed = cell.trim();
+                            return trimmed === 'NULL' ? null : trimmed;
+                        });
+                    
+                    return cells;
+                });
+                
+                return { sql, results: mockResult };
+            }
+        }
+        
+        return { sql, results: null };
+    };
+    
+    // Show a previous query's results in the popup
+    const showPreviousQueryResults = (item) => {
+        const { sql, results } = parseResultsFromMarkdown(item.response);
+        
+        // Set up the data for the popup
+        setHistoricQueryData({
+            sql,
+            results,
+            naturalQuery: item.prompt  // Make sure this contains the original natural language query
+        });
+        
+        // Show the popup
+        setShowResultPopup(true);
+    };
+
+    // Delete a query and its response from the session
+    const handleDeleteQuery = async (queryId) => {
+        if (!currentSessionId) return;
+        
+        try {
+            await api.deleteQueryFromSession(currentSessionId, queryId);
+            
+            // Update the current session by reloading it
+            loadSession(currentSessionId);
+        } catch (error) {
+            console.error("Error deleting query:", error);
+        }
     };
 
     if (initialLoading) {
@@ -589,6 +844,105 @@ ${formatQueryResults(executionResponse.data)}
                             },
                         }}
                     >
+                        {/* SQL Controls - Show when SQL is generated but not yet executed */}
+                        {showSqlControls && (
+                            <Fade in={showSqlControls} timeout={300}>
+                                <Paper 
+                                    elevation={3}
+                                    sx={{
+                                        p: 3,
+                                        mt: 2,
+                                        mb: 3,
+                                        borderRadius: 2,
+                                        border: '1px solid',
+                                        borderColor: alpha(theme.palette.primary.main, 0.2),
+                                        bgcolor: alpha(theme.palette.background.paper, 0.8),
+                                        backdropFilter: 'blur(10px)',
+                                        position: 'sticky',
+                                        top: 10,
+                                        zIndex: 10,
+                                        boxShadow: `0 4px 20px ${alpha(theme.palette.common.black, 0.15)}`
+                                    }}
+                                >
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+                                        <Typography variant="h6" fontWeight={600} sx={{
+                                            color: theme.palette.text.primary,
+                                        }}>
+                                            Generated SQL Query
+                                        </Typography>
+                                        <IconButton 
+                                            size="small" 
+                                            onClick={() => copyToClipboard(generatedSql)}
+                                            title="Copy SQL to clipboard"
+                                            sx={{ 
+                                                color: theme.palette.primary.main,
+                                                '&:hover': {
+                                                    backgroundColor: alpha(theme.palette.primary.main, 0.1),
+                                                }
+                                            }}
+                                        >
+                                            <Box component="svg" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="18" height="18">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                            </Box>
+                                        </IconButton>
+                                    </Box>
+                                    
+                                    <Paper 
+                                        elevation={0}
+                                        sx={{
+                                            p: 2,
+                                            mb: 3,
+                                            borderRadius: 1,
+                                            bgcolor: alpha(theme.palette.background.default, 0.7),
+                                            border: '1px solid',
+                                            borderColor: alpha(theme.palette.divider, 0.6),
+                                            overflow: 'auto',
+                                            maxHeight: '200px',
+                                            fontFamily: 'monospace',
+                                            fontSize: '0.9rem',
+                                            whiteSpace: 'pre-wrap',
+                                            wordBreak: 'break-word'
+                                        }}
+                                    >
+                                        {generatedSql}
+                                    </Paper>
+                                    
+                                    <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
+                                        <Button 
+                                            variant="outlined" 
+                                            color="error"
+                                            onClick={discardGeneratedSql}
+                                            sx={{
+                                                borderRadius: '8px',
+                                                fontWeight: 500,
+                                                px: 3
+                                            }}
+                                        >
+                                            Discard
+                                        </Button>
+                                        <Button 
+                                            variant="contained" 
+                                            color="primary"
+                                            onClick={executeGeneratedSql}
+                                            sx={{
+                                                borderRadius: '8px',
+                                                fontWeight: 500,
+                                                px: 3,
+                                                background: 'linear-gradient(45deg, #5581D9 10%, #6596EB 90%)',
+                                                boxShadow: '0 2px 10px rgba(101, 150, 235, 0.3)',
+                                                '&:hover': {
+                                                    background: 'linear-gradient(45deg, #4B74C7 10%, #5889DB 90%)',
+                                                    boxShadow: '0 4px 15px rgba(101, 150, 235, 0.4)',
+                                                }
+                                            }}
+                                        >
+                                            Execute Query
+                                        </Button>
+                                    </Box>
+                                </Paper>
+                            </Fade>
+                        )}
+
                         {!currentSession?.queries || currentSession.queries.length === 0 ? (
                             <Box sx={{
                                 display: 'flex',
@@ -638,127 +992,207 @@ ${formatQueryResults(executionResponse.data)}
                                 </Box>
                             </Box>
                         ) : (
-                            currentSession.queries.map((item, index) => (
-                                <Fade in={true} key={index} timeout={300} style={{ transitionDelay: `${index * 50}ms` }}>
-                                    <Box sx={{ width: '100%', my: 2 }}>
-                                        {/* User message */}
-                                        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1.5, alignItems: 'flex-start' }}>
-                                            <Box sx={{ maxWidth: { xs: '80%', md: '70%' } }}>
-                                                <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 0.5, mr: 1 }}>
-                                                    <Typography variant="caption" sx={{ color: alpha(theme.palette.text.secondary, 0.8) }}>
-                                                        You
-                                                    </Typography>
-                                                </Box>
-                                                <Paper 
-                                                    elevation={0}
-                                                    sx={{
-                                                        p: 2,
-                                                        color: 'white',
-                                                        backgroundImage: 'linear-gradient(45deg, #5581D9 10%, #6596EB 90%)',
-                                                        borderRadius: '16px 16px 4px 16px',
-                                                        boxShadow: '0 2px 12px rgba(101, 150, 235, 0.3)',
-                                                        overflowWrap: 'break-word',
-                                                        wordBreak: 'break-word'
-                                                    }}
-                                                >
-                                                    <Typography variant="body1">{item.prompt}</Typography>
-                                                </Paper>
-                                            </Box>
-                                            <Avatar 
-                                                sx={{ 
-                                                    ml: 1, 
-                                                    bgcolor: theme.palette.primary.dark,
-                                                    boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
-                                                }} 
-                                                alt="User"
-                                            >
-                                                <PersonIcon />
-                                            </Avatar>
-                                        </Box>
-                                        
-                                        {/* System message */}
-                                        <Box sx={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'flex-start' }}>
-                                            <Avatar 
-                                                sx={{ 
-                                                    mr: 1, 
-                                                    bgcolor: theme.palette.secondary.dark,
-                                                    boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
-                                                }} 
-                                                alt="AI"
-                                            >
-                                                <SmartToyIcon />
-                                            </Avatar>
-                                            <Box sx={{ maxWidth: { xs: '85%', md: '75%' } }}>
-                                                <Box sx={{ display: 'flex', mb: 0.5, ml: 1 }}>
-                                                    <Typography variant="caption" sx={{ color: alpha(theme.palette.text.secondary, 0.8) }}>
-                                                        AI Assistant
-                                                    </Typography>
-                                                </Box>
-                                                <Paper 
-                                                    elevation={0}
-                                                    sx={{
-                                                        p: 2,
-                                                        color: theme.palette.text.primary,
-                                                        bgcolor: alpha(theme.palette.background.paper, 0.7),
-                                                        backdropFilter: 'blur(10px)',
-                                                        borderRadius: '16px 16px 16px 4px',
-                                                        border: '1px solid',
-                                                        borderColor: alpha(theme.palette.divider, 0.4),
-                                                        overflowWrap: 'break-word',
-                                                        wordWrap: 'break-word',
-                                                        boxShadow: '0 2px 12px rgba(0,0,0,0.1)'
-                                                    }}
-                                                >
-                                                    <Typography 
-                                                        variant="body1" 
-                                                        sx={{ 
-                                                            whiteSpace: 'pre-wrap',
-                                                            '& code': {
-                                                                backgroundColor: alpha(theme.palette.background.default, 0.5),
-                                                                fontFamily: 'monospace',
-                                                                p: 0.5,
-                                                                borderRadius: 1,
+                            currentSession.queries.map((item, index) => {
+                                const { previewText, rowCount, hasError } = generateResultsSummary(item.response);
+                                return (
+                                    <Fade in={true} key={index} timeout={300} style={{ transitionDelay: `${index * 50}ms` }}>
+                                        <Box sx={{ width: '100%', my: 2 }}>
+                                            {/* User message */}
+                                            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1.5, alignItems: 'flex-start' }}>
+                                                <Box sx={{ maxWidth: { xs: '80%', md: '70%' } }}>
+                                                    <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 0.5, mr: 1 }}>
+                                                        <Typography variant="caption" sx={{ color: alpha(theme.palette.text.secondary, 0.8) }}>
+                                                            You
+                                                        </Typography>
+                                                    </Box>
+                                                    <Paper 
+                                                        elevation={0}
+                                                        sx={{
+                                                            p: 2,
+                                                            color: 'white',
+                                                            backgroundImage: 'linear-gradient(45deg, #4776D0 10%, #6596EB 60%, #7EABFF 95%)',
+                                                            borderRadius: '16px 16px 4px 16px',
+                                                            boxShadow: '0 2px 15px rgba(101, 150, 235, 0.4)',
+                                                            overflowWrap: 'break-word',
+                                                            wordBreak: 'break-word',
+                                                            animation: 'fadeIn 0.5s ease-out',
+                                                            '@keyframes fadeIn': {
+                                                                '0%': {
+                                                                    opacity: 0,
+                                                                    transform: 'translateY(10px)'
+                                                                },
+                                                                '100%': {
+                                                                    opacity: 1,
+                                                                    transform: 'translateY(0)'
+                                                                }
                                                             },
-                                                            '& table': {
-                                                                borderCollapse: 'collapse',
-                                                                width: '100%',
-                                                                my: 1.5,
-                                                                overflowX: 'auto',
-                                                                display: 'block',
-                                                            },
-                                                            '& th': {
-                                                                borderBottom: `1px solid ${alpha(theme.palette.divider, 0.8)}`,
-                                                                p: 1,
-                                                                textAlign: 'left',
-                                                                fontWeight: 500,
-                                                                color: theme.palette.primary.light,
-                                                                backgroundColor: alpha(theme.palette.background.default, 0.5),
-                                                            },
-                                                            '& td': {
-                                                                p: 1,
-                                                                borderBottom: `1px solid ${alpha(theme.palette.divider, 0.3)}`,
+                                                            transition: 'transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
+                                                            '&:hover': {
+                                                                transform: 'translateY(-2px)',
+                                                                boxShadow: '0 4px 20px rgba(101, 150, 235, 0.5)',
                                                             }
                                                         }}
                                                     >
-                                                        {item.response}
-                                                    </Typography>
-                                                    <Typography 
-                                                        variant="caption" 
-                                                        sx={{ 
-                                                            display: 'block', 
-                                                            mt: 1.5, 
-                                                            textAlign: 'right',
-                                                            color: alpha(theme.palette.text.secondary, 0.6)
+                                                        <Typography variant="body1">{item.prompt}</Typography>
+                                                    </Paper>
+                                                </Box>
+                                                <Avatar 
+                                                    sx={{ 
+                                                        ml: 1, 
+                                                        bgcolor: theme.palette.primary.dark,
+                                                        boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+                                                        animation: 'pulseAvatar 0.5s ease-out',
+                                                        '@keyframes pulseAvatar': {
+                                                            '0%': {
+                                                                transform: 'scale(0.8)',
+                                                                opacity: 0
+                                                            },
+                                                            '100%': {
+                                                                transform: 'scale(1)',
+                                                                opacity: 1
+                                                            }
+                                                        }
+                                                    }} 
+                                                    alt="User"
+                                                >
+                                                    <PersonIcon />
+                                                </Avatar>
+                                            </Box>
+                                            
+                                            {/* System message */}
+                                            <Box sx={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'flex-start' }}>
+                                                <Avatar 
+                                                    sx={{ 
+                                                        mr: 1, 
+                                                        bgcolor: theme.palette.secondary.dark,
+                                                        boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
+                                                    }} 
+                                                    alt="AI"
+                                                >
+                                                    <SmartToyIcon />
+                                                </Avatar>
+                                                <Box sx={{ maxWidth: { xs: '85%', md: '75%' } }}>
+                                                    <Box sx={{ display: 'flex', mb: 0.5, ml: 1 }}>
+                                                        <Typography variant="caption" sx={{ color: alpha(theme.palette.text.secondary, 0.8) }}>
+                                                            AI Assistant
+                                                        </Typography>
+                                                    </Box>
+                                                    <Paper 
+                                                        elevation={0}
+                                                        sx={{
+                                                            p: 2,
+                                                            color: theme.palette.text.primary,
+                                                            backgroundImage: 'linear-gradient(135deg, rgba(100, 95, 190, 0.05) 0%, rgba(80, 110, 200, 0.15) 100%)',
+                                                            backdropFilter: 'blur(10px)',
+                                                            borderRadius: '16px 16px 16px 4px',
+                                                            border: '1px solid',
+                                                            borderColor: alpha(theme.palette.divider, 0.4),
+                                                            overflowWrap: 'break-word',
+                                                            wordWrap: 'break-word',
+                                                            boxShadow: '0 2px 12px rgba(0,0,0,0.1)',
+                                                            cursor: 'pointer',
+                                                            transition: 'all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)',
+                                                            '&:hover': {
+                                                                backgroundImage: 'linear-gradient(135deg, rgba(100, 95, 190, 0.1) 0%, rgba(80, 110, 200, 0.2) 100%)',
+                                                                boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
+                                                                transform: 'translateY(-2px)',
+                                                                borderColor: alpha(theme.palette.primary.main, 0.2),
+                                                            }
                                                         }}
                                                     >
-                                                        {new Date(item.created_at).toLocaleString()}
-                                                    </Typography>
-                                                </Paper>
+                                                        <Typography 
+                                                            variant="body1" 
+                                                            sx={{ 
+                                                                whiteSpace: 'pre-wrap',
+                                                                animation: 'fadeInSlide 0.4s ease-out',
+                                                                '@keyframes fadeInSlide': {
+                                                                    '0%': {
+                                                                        opacity: 0,
+                                                                        transform: 'translateY(10px)'
+                                                                    },
+                                                                    '100%': {
+                                                                        opacity: 1,
+                                                                        transform: 'translateY(0)'
+                                                                    }
+                                                                },
+                                                                '& code': {
+                                                                    backgroundColor: alpha(theme.palette.background.default, 0.5),
+                                                                    fontFamily: 'monospace',
+                                                                    p: 0.5,
+                                                                    borderRadius: 1,
+                                                                },
+                                                                '& table': {
+                                                                    borderCollapse: 'collapse',
+                                                                    width: '100%',
+                                                                    my: 1.5,
+                                                                    overflowX: 'auto',
+                                                                    display: 'block',
+                                                                },
+                                                                '& th': {
+                                                                    borderBottom: `1px solid ${alpha(theme.palette.divider, 0.8)}`,
+                                                                    p: 1,
+                                                                    textAlign: 'left',
+                                                                    fontWeight: 500,
+                                                                    color: theme.palette.primary.light,
+                                                                    backgroundColor: alpha(theme.palette.background.default, 0.5),
+                                                                },
+                                                                '& td': {
+                                                                    p: 1,
+                                                                    borderBottom: `1px solid ${alpha(theme.palette.divider, 0.3)}`,
+                                                                }
+                                                            }}
+                                                        >
+                                                            {previewText}
+                                                        </Typography>
+                                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1.5 }}>
+                                                            <Typography 
+                                                                variant="caption" 
+                                                                sx={{ 
+                                                                    color: alpha(theme.palette.text.secondary, 0.6)
+                                                                }}
+                                                            >
+                                                                {new Date(item.created_at).toLocaleString()}
+                                                            </Typography>
+                                                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                                                <Button 
+                                                                    size="small" 
+                                                                    variant="outlined" 
+                                                                    color="primary" 
+                                                                    onClick={() => showPreviousQueryResults(item)}
+                                                                    startIcon={<VisibilityIcon />}
+                                                                    sx={{
+                                                                        borderRadius: '8px',
+                                                                        fontWeight: 500,
+                                                                        px: 2,
+                                                                        py: 0.5,
+                                                                        ml: 2,
+                                                                        borderWidth: '1.5px',
+                                                                        '&:hover': {
+                                                                            borderWidth: '1.5px',
+                                                                            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
+                                                                            transform: 'translateY(-2px)',
+                                                                        }
+                                                                    }}
+                                                                >
+                                                                    View Details
+                                                                </Button>
+                                                                <IconButton 
+                                                                    size="small" 
+                                                                    color="error" 
+                                                                    onClick={() => handleDeleteQuery(item.id)}
+                                                                    sx={{ ml: 1 }}
+                                                                >
+                                                                    <DeleteIcon />
+                                                                </IconButton>
+                                                            </Box>
+                                                        </Box>
+                                                    </Paper>
+                                                </Box>
                                             </Box>
                                         </Box>
-                                    </Box>
-                                </Fade>
-                            ))
+                                    </Fade>
+                                );
+                            })
                         )}
                         <div ref={messagesEndRef} />
                     </Box>
@@ -884,6 +1318,19 @@ ${formatQueryResults(executionResponse.data)}
                     </Box>
                 </Box>
             </Box>
+            
+            {/* Results Popup - Show when query results are available */}
+            <PopupResult 
+                open={showResultPopup}
+                onClose={() => {
+                    setShowResultPopup(false);
+                    setHistoricQueryData(null);  // Clear historic data when closing
+                }}
+                sql={historicQueryData ? historicQueryData.sql : generatedSql}
+                results={historicQueryData ? historicQueryData.results : queryResult}
+                executionTime={historicQueryData ? null : queryResult?.execution_time}
+                naturalQuery={historicQueryData ? historicQueryData.naturalQuery : currentNaturalQuery}
+            />
         </Box>
     );
 }
