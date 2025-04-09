@@ -18,6 +18,12 @@ class DatabaseViewSet(viewsets.ModelViewSet):
     serializer_class = ClientDatabaseSerializer
     permission_classes = [IsAuthenticated]
     
+    def get_queryset(self):
+        """
+        Override get_queryset to ensure users can only access their own databases
+        """
+        return ClientDatabase.objects.filter(owner=self.request.user)
+    
     def perform_create(self, serializer):
         serializer.save(owner=self.request.user)
     

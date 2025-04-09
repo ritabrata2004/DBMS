@@ -96,13 +96,24 @@ def nl_to_sql(natural_language_query, database_id):
         dict: Generated SQL query and explanation
     """
     try:
+        # Get the database to ensure it exists
+        from databases.models import ClientDatabase
+        try:
+            database = ClientDatabase.objects.get(id=database_id)
+        except ClientDatabase.DoesNotExist:
+            return {
+                "success": False,
+                "error": f"Database with ID {database_id} does not exist."
+            }
+            
         # Build schema representation from database
         schema = build_schema_representation(database_id)
         
         if not schema:
+            # If metadata hasn't been extracted, inform the user
             return {
                 "success": False,
-                "error": "Could not retrieve database schema. Please ensure metadata has been extracted."
+                "error": "No schema information available for this database. Please extract metadata first by clicking 'Extract Schema' on the database details page."
             }
         
         # Create a schema summary for the prompt
