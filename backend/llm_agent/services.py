@@ -5,13 +5,13 @@ from django.conf import settings
 from databases.models import TableMetadata, ColumnMetadata
 import requests 
 
-def llm_api(prompt, model="llama3-70b-8192", temperature=0.7, max_tokens=1000):
+def llm_api(prompt, model="gpt-4o-mini", temperature=0.7, max_tokens=1000):
     """
-    A simple function to interact with Groq API.
+    A unified function to interact with either OpenAI or Groq API based on the model name.
     
     Args:
-        prompt (str): The prompt to send to the Groq API
-        model (str): The model to use, default is llama3-70b-8192
+        prompt (str): The prompt to send to the API
+        model (str): The model to use, default is gpt-4o-mini
         temperature (float): Controls randomness (0-1), default is 0.7
         max_tokens (int): Maximum number of tokens to generate, default is 1000
         
@@ -19,43 +19,74 @@ def llm_api(prompt, model="llama3-70b-8192", temperature=0.7, max_tokens=1000):
         dict: The response with success status and content/error
     """
     try:
-        # Get API key from environment
-        api_key = os.getenv("GROQ_API_KEY")
+        # Determine which API to use based on model name
+        use_openai = model.startswith(("gpt", "o1", "o3"))
         
-        if not api_key:
-            return {"success": False, "error": "Groq API key not found. Please set GROQ_API_KEY in your .env file."}
-        
-        # Set up the request
-        headers = {
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json"
-        }
-        
-        data = {
-            "model": model,
-            "messages": [{"role": "user", "content": prompt}],
-            "max_tokens": max_tokens,
-            "temperature": temperature
-        }
-        
-        # Call the API
-        response = requests.post(
-            "https://api.groq.com/openai/v1/chat/completions", 
-            headers=headers, 
-            json=data
-        )
-        response.raise_for_status()
-        result = response.json()
-        
-        # Extract the content from the response
-        content = result["choices"][0]["message"]["content"]
-        return {
-            "success": True,
-            "content": content
-        }
+        if use_openai:
+            # Get OpenAI API key
+            api_key = os.getenv("OPENAI_API_KEY") or getattr(settings, "OPENAI_API_KEY", None)
+            
+            if not api_key:
+                return {"success": False, "error": "OpenAI API key not found. Please set OPENAI_API_KEY environment variable."}
+            
+            # Initialize the OpenAI client
+            client = OpenAI(api_key=api_key)
+            
+            # Call the OpenAI API
+            response = client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "user", "content": prompt},
+                ],
+                temperature=temperature,
+                max_tokens=max_tokens
+            )
+            
+            # Extract the content from the response
+            content = response.choices[0].message.content
+            return {
+                "success": True,
+                "content": content
+            }
+        else:
+            # Get Groq API key
+            api_key = os.getenv("GROQ_API_KEY")
+            
+            if not api_key:
+                return {"success": False, "error": "Groq API key not found. Please set GROQ_API_KEY in your .env file."}
+            
+            # Set up the Groq request
+            headers = {
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json"
+            }
+            
+            data = {
+                "model": model,
+                "messages": [{"role": "user", "content": prompt}],
+                "max_tokens": max_tokens,
+                "temperature": temperature
+            }
+            
+            # Call the Groq API
+            response = requests.post(
+                "https://api.groq.com/openai/v1/chat/completions", 
+                headers=headers, 
+                json=data
+            )
+            response.raise_for_status()
+            result = response.json()
+            
+            # Extract the content from the response
+            content = result["choices"][0]["message"]["content"]
+            return {
+                "success": True,
+                "content": content
+            }
             
     except Exception as e:
         return {"success": False, "error": str(e)}
+
 
 
 def get_metadata_description(metadata_type, name, sample_data=None):
@@ -70,16 +101,84 @@ def get_metadata_description(metadata_type, name, sample_data=None):
     Returns:
         str: Generated description
     """
-    prompts = {
-        "table": f"Generate a brief, professional description for a database table named '{name}'. If available, use this sample data for context: {sample_data}",
-        "column": f"Generate a brief, professional description for a database column named '{name}' with the following properties: {sample_data}",
-        "relationship": f"Generate a brief, professional description for a database relationship where {sample_data}"
+    # Base prompts without additional context
+    base_prompts = {
+        "table": f"Generate a brief, professional description for a database table named '{name}'.",
+        "column": f"Generate a brief, professional description for a database column named '{name}'.",
+        "relationship": f"Generate a brief, professional description for a database relationship."
     }
     
-    if metadata_type not in prompts:
+    if metadata_type not in base_prompts:
         return "Invalid metadata type specified."
     
-    result = llm_api(prompts[metadata_type])
+    # Start with the base prompt
+    prompt = base_prompts[metadata_type]
+    
+    # Add context details based on metadata type
+    if sample_data:
+        if metadata_type == 'table':
+            schema = sample_data.get('schema', 'unknown')
+            table_type = sample_data.get('table_type', 'table')
+            row_count = sample_data.get('row_count', 'unknown')
+            
+            prompt += f"\n\nContext information:"
+            prompt += f"\n- Schema: {schema}"
+            prompt += f"\n- Table type: {table_type}"
+            if row_count != 'unknown':
+                prompt += f"\n- Approximate row count: {row_count}"
+            
+            # Add column information if available
+            if 'columns' in sample_data:
+                prompt += "\n- Columns:"
+                for column in sample_data['columns'][:10]:  # Limit to 10 columns
+                    col_name = column.get('name', '')
+                    col_type = column.get('type', '')
+                    is_pk = "primary key" if column.get('primary_key', False) else ""
+                    is_fk = "foreign key" if column.get('foreign_key', False) else ""
+                    
+                    keys = ""
+                    if is_pk and is_fk:
+                        keys = " (primary and foreign key)"
+                    elif is_pk:
+                        keys = " (primary key)"
+                    elif is_fk:
+                        keys = " (foreign key)"
+                        
+                    prompt += f"\n  - {col_name}: {col_type}{keys}"
+                    
+        elif metadata_type == 'column':
+            schema = sample_data.get('schema', 'unknown')
+            table = sample_data.get('table', 'unknown')
+            data_type = sample_data.get('data_type', 'unknown')
+            nullable = "nullable" if sample_data.get('nullable', True) else "not nullable"
+            
+            prompt += f"\n\nContext information:"
+            prompt += f"\n- Schema: {schema}"
+            prompt += f"\n- Table: {table}"
+            prompt += f"\n- Data type: {data_type}"
+            prompt += f"\n- {nullable}"
+            
+            if sample_data.get('primary_key', False):
+                prompt += "\n- This is a primary key column"
+            
+            if sample_data.get('foreign_key', False):
+                prompt += "\n- This is a foreign key column"
+            
+            # Add sample values if available
+            if 'sample_values' in sample_data and sample_data['sample_values']:
+                sample_values = sample_data['sample_values']
+                formatted_samples = [f"'{str(value)}'" for value in sample_values]
+                prompt += f"\n\nSample distinct values from this column (up to 10): {', '.join(formatted_samples)}"
+                prompt += "\n\nBased on the column name, data type, constraints, and especially these sample values, generate an accurate and specific description of what this column represents in the database."
+                prompt += "\n\nYOUR DESCRIPTION MUST INCLUDE a brief mention of the possible values this column can contain, based on the provided sample values."
+        
+        elif metadata_type == 'relationship':
+            prompt += f"\n\nContext information: {sample_data}"
+    
+    # Request a concise professional description
+    prompt += "\n\nGenerate a single paragraph, professional description that would be helpful for a database user to understand this item's purpose and content."
+    
+    result = llm_api(prompt)
     if result.get("success"):
         return result.get("content", "")
     return "Failed to generate description due to API error."

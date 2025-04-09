@@ -89,22 +89,120 @@ class DatabaseConnector:
             database_obj.connection_status = 'error'
             database_obj.save(update_fields=['connection_status'])
             return results
+    
+    def get_column_sample_values(self, database_obj, schema_name, table_name, column_name, limit=10):
+        """Fetch sample distinct values from a column to provide AI context"""
+        try:
+            conn = self.create_connection(database_obj)
+            results = []
+            
+            with conn.cursor() as cursor:
+                # Use SQL DISTINCT to get unique values, limit to 10 for context
+                query = f"""
+                SELECT DISTINCT "{column_name}" 
+                FROM "{schema_name}"."{table_name}"
+                WHERE "{column_name}" IS NOT NULL
+                LIMIT {limit}
+                """
+                
+                try:
+                    cursor.execute(query)
+                    rows = cursor.fetchall()
+                    
+                    for row in rows:
+                        # Handle different data types for serialization
+                        value = row[0]
+                        if isinstance(value, (datetime, pytz.datetime.datetime)):
+                            value = value.strftime('%Y-%m-%d %H:%M:%S')
+                        
+                        results.append(value)
+                except Exception as e:
+                    # If query fails, just return empty list
+                    print(f"Error getting sample values: {str(e)}")
+            
+            conn.close()
+            return results
+        except Exception as e:
+            print(f"Connection error getting sample values: {str(e)}")
+            return []
 
 class MetadataExtractor:
     """Extracts schema metadata from connected databases"""
     
     def __init__(self):
         self.connector = DatabaseConnector()
+        self.changes = {
+            'tables': {'added': [], 'updated': [], 'removed': []},
+            'columns': {'added': [], 'updated': [], 'removed': []},
+            'relationships': {'added': [], 'updated': [], 'removed': []}
+        }
     
     def extract_full_metadata(self, database_obj):
         """Extract all metadata (tables, columns, relationships) from a database"""
         try:
+            # Reset changes tracking
+            self.changes = {
+                'tables': {'added': [], 'updated': [], 'removed': []},
+                'columns': {'added': [], 'updated': [], 'removed': []},
+                'relationships': {'added': [], 'updated': [], 'removed': []}
+            }
+            
+            # Get all current tables in database to track removed tables
+            existing_tables = set(TableMetadata.objects.filter(database=database_obj)
+                                 .values_list('schema_name', 'table_name'))
+            
             # Get tables first
             tables = self.extract_tables(database_obj)
             
+            # Check for removed tables
+            current_tables = set((table.schema_name, table.table_name) for table in tables)
+            removed_tables = existing_tables - current_tables
+            
+            # Record removed tables
+            for schema_name, table_name in removed_tables:
+                try:
+                    table = TableMetadata.objects.get(
+                        database=database_obj,
+                        schema_name=schema_name,
+                        table_name=table_name
+                    )
+                    self.changes['tables']['removed'].append({
+                        'schema': schema_name,
+                        'name': table_name
+                    })
+                    table.delete()
+                except TableMetadata.DoesNotExist:
+                    continue  # Table was already deleted somehow
+            
             # For each table, get its columns
             for table in tables:
+                # Get current columns in table to track removed columns
+                existing_columns = set(
+                    ColumnMetadata.objects.filter(table=table)
+                    .values_list('column_name', flat=True)
+                )
+                
+                # Extract columns
                 columns = self.extract_columns(database_obj, table.schema_name, table.table_name)
+                
+                # Check for removed columns
+                current_columns = set(col.column_name for col in columns)
+                removed_columns = existing_columns - current_columns
+                
+                # Record removed columns
+                for column_name in removed_columns:
+                    try:
+                        column = ColumnMetadata.objects.get(
+                            table=table,
+                            column_name=column_name
+                        )
+                        self.changes['columns']['removed'].append({
+                            'table': f"{table.schema_name}.{table.table_name}",
+                            'name': column_name
+                        })
+                        column.delete()
+                    except ColumnMetadata.DoesNotExist:
+                        continue  # Column was already deleted
             
             # Extract relationships between tables
             self.extract_relationships(database_obj)
@@ -113,9 +211,9 @@ class MetadataExtractor:
             database_obj.last_metadata_update = datetime.now(pytz.UTC)
             database_obj.save(update_fields=['last_metadata_update'])
             
-            return True, "Metadata extraction completed successfully"
+            return True, "Metadata extraction completed successfully", self.changes
         except Exception as e:
-            return False, str(e)
+            return False, str(e), self.changes
     
     def extract_tables(self, database_obj, schema_pattern=None):
         """Extract tables and views from the database"""
@@ -146,7 +244,7 @@ class MetadataExtractor:
                     cursor.execute(query)
                 
                 for row in cursor.fetchall():
-                    schema_name, table_name, table_type, description = row
+                    schema_name, table_name, table_type, db_description = row
                     
                     # Convert PostgreSQL table_type to our format
                     if table_type == 'BASE TABLE':
@@ -156,6 +254,18 @@ class MetadataExtractor:
                     elif table_type == 'MATERIALIZED VIEW':
                         table_type = 'materialized_view'
                     
+                    # Try to find existing table metadata to preserve description
+                    try:
+                        existing_table = TableMetadata.objects.get(
+                            database=database_obj,
+                            schema_name=schema_name,
+                            table_name=table_name
+                        )
+                        # Preserve existing description if it exists and not empty
+                        description = existing_table.description if existing_table.description else db_description
+                    except TableMetadata.DoesNotExist:
+                        description = db_description if db_description else ""
+                    
                     # Get or create table metadata record
                     table_meta, created = TableMetadata.objects.update_or_create(
                         database=database_obj,
@@ -163,9 +273,27 @@ class MetadataExtractor:
                         table_name=table_name,
                         defaults={
                             'table_type': table_type,
-                            'description': description if description else ""
+                            'description': description
                         }
                     )
+                    
+                    # Track changes
+                    if created:
+                        self.changes['tables']['added'].append({
+                            'schema': schema_name,
+                            'name': table_name,
+                            'type': table_type
+                        })
+                    elif table_meta.table_type != table_type:
+                        # Only count as update if table type changed, not description
+                        self.changes['tables']['updated'].append({
+                            'schema': schema_name,
+                            'name': table_name,
+                            'type': table_type,
+                            'changes': {
+                                'type': table_type if table_meta.table_type != table_type else None,
+                            }
+                        })
                     
                     # Get row count for tables (not views)
                     if table_type == 'table':
@@ -173,8 +301,9 @@ class MetadataExtractor:
                             count_query = f'SELECT COUNT(*) FROM "{schema_name}"."{table_name}"'
                             cursor.execute(count_query)
                             row_count = cursor.fetchone()[0]
-                            table_meta.row_count = row_count
-                            table_meta.save(update_fields=['row_count'])
+                            if table_meta.row_count != row_count:
+                                table_meta.row_count = row_count
+                                table_meta.save(update_fields=['row_count'])
                         except:
                             # Skip row count if it fails
                             pass
@@ -223,7 +352,7 @@ class MetadataExtractor:
                 """, (schema_name, table_name))
                 
                 for row in cursor.fetchall():
-                    column_name, data_type, is_nullable, column_default, description = row
+                    column_name, data_type, is_nullable, column_default, db_description = row
                     is_nullable = True if is_nullable == 'YES' else False
                     
                     # Check if column is primary key
@@ -272,6 +401,17 @@ class MetadataExtractor:
                     
                     is_foreign_key = bool(cursor.fetchone())
                     
+                    # Try to find existing column to preserve its description
+                    try:
+                        existing_column = ColumnMetadata.objects.get(
+                            table=table,
+                            column_name=column_name
+                        )
+                        # Preserve existing description if it exists
+                        description = existing_column.description if existing_column.description else db_description
+                    except ColumnMetadata.DoesNotExist:
+                        description = db_description if db_description else ""
+                    
                     # Create or update column metadata
                     column_meta, created = ColumnMetadata.objects.update_or_create(
                         table=table,
@@ -281,9 +421,36 @@ class MetadataExtractor:
                             'is_nullable': is_nullable,
                             'is_primary_key': is_primary_key,
                             'is_foreign_key': is_foreign_key,
-                            'description': description if description else ""
+                            'description': description
                         }
                     )
+                    
+                    # Track changes
+                    if created:
+                        self.changes['columns']['added'].append({
+                            'table': f"{schema_name}.{table_name}",
+                            'name': column_name,
+                            'type': data_type
+                        })
+                    else:
+                        changes = {}
+                        if column_meta.data_type != data_type:
+                            changes['type'] = data_type
+                        if column_meta.is_nullable != is_nullable:
+                            changes['nullable'] = is_nullable
+                        if column_meta.is_primary_key != is_primary_key:
+                            changes['primary_key'] = is_primary_key
+                        if column_meta.is_foreign_key != is_foreign_key:
+                            changes['foreign_key'] = is_foreign_key
+                        
+                        # Don't include description in changes since we're preserving it
+                            
+                        if changes:
+                            self.changes['columns']['updated'].append({
+                                'table': f"{schema_name}.{table_name}",
+                                'name': column_name,
+                                'changes': changes
+                            })
                     
                     columns.append(column_meta)
             
@@ -390,7 +557,34 @@ class MetadataExtractor:
         elif column_metadata.is_foreign_key:
             key_info = " and references another table"
             
-        return f"Column {column_metadata.column_name} {column_type} ({nullability}){key_info}."
+        # Get sample values for the column
+        sample_values = []
+        try:
+            connector = DatabaseConnector()
+            table = column_metadata.table
+            database = table.database
+            sample_values = connector.get_column_sample_values(
+                database,
+                table.schema_name,
+                table.table_name,
+                column_metadata.column_name,
+                limit=10
+            )
+        except Exception as e:
+            print(f"Error getting sample values for default description: {str(e)}")
+        
+        # Include sample values in description if available
+        sample_text = ""
+        if sample_values:
+            formatted_samples = [f"'{str(value)}'" for value in sample_values]
+            if len(formatted_samples) > 5:
+                # For more than 5 samples, show first 5 and indicate more exist
+                sample_text = f" Sample values include: {', '.join(formatted_samples[:5])}, etc."
+            else:
+                # For 5 or fewer, show all
+                sample_text = f" Sample values include: {', '.join(formatted_samples)}."
+            
+        return f"Column {column_metadata.column_name} {column_type} ({nullability}){key_info}.{sample_text}"
 
 class MetadataVectorizer:
     """Creates vector embeddings for metadata for RAG"""
