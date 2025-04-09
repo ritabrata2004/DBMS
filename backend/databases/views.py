@@ -58,11 +58,12 @@ class DatabaseViewSet(viewsets.ModelViewSet):
         """Extract schema metadata from the database"""
         database = self.get_object()
         extractor = MetadataExtractor()
-        success, message = extractor.extract_full_metadata(database)
+        success, message, changes = extractor.extract_full_metadata(database)
         
         return Response({
             'success': success,
-            'message': message
+            'message': message,
+            'changes': changes
         })
     
     @action(detail=True, methods=['post'])
@@ -222,26 +223,92 @@ class DatabaseViewSet(viewsets.ModelViewSet):
         database = self.get_object()
         
         # Validate input
-        if 'type' not in request.data or 'name' not in request.data:
+        if 'type' not in request.data or 'id' not in request.data:
             return Response({
                 'success': False,
-                'message': 'type and name are required'
+                'message': 'type and id are required'
             }, status=400)
         
         metadata_type = request.data['type']
-        name = request.data['name']
-        context = request.data.get('context', {})
+        metadata_id = request.data['id']
         
         try:
             from llm_agent.services import get_metadata_description
+            connector = DatabaseConnector()
+            
+            # Prepare context data for AI
+            context = {}
+            name = ""
+            
+            if metadata_type == 'table':
+                # Get table metadata
+                table = TableMetadata.objects.get(id=metadata_id, database=database)
+                name = table.table_name
+                context = {
+                    'schema': table.schema_name,
+                    'table_type': table.table_type,
+                    'row_count': table.row_count
+                }
+                
+                # Add some column information for context
+                columns = ColumnMetadata.objects.filter(table=table)
+                context['columns'] = [
+                    {
+                        'name': col.column_name,
+                        'type': col.data_type,
+                        'primary_key': col.is_primary_key, 
+                        'foreign_key': col.is_foreign_key
+                    } 
+                    for col in columns[:10]  # Limit to first 10 columns
+                ]
+                
+            elif metadata_type == 'column':
+                # Get column metadata
+                column = ColumnMetadata.objects.get(id=metadata_id, table__database=database)
+                name = column.column_name
+                table = column.table
+                
+                # Basic column context
+                context = {
+                    'schema': table.schema_name,
+                    'table': table.table_name,
+                    'data_type': column.data_type,
+                    'nullable': column.is_nullable,
+                    'primary_key': column.is_primary_key,
+                    'foreign_key': column.is_foreign_key,
+                }
+                
+                # Get sample distinct values to provide better context for AI
+                sample_values = connector.get_column_sample_values(
+                    database, 
+                    table.schema_name, 
+                    table.table_name, 
+                    column.column_name, 
+                    limit=10
+                )
+                
+                if sample_values:
+                    context['sample_values'] = sample_values
+            else:
+                return Response({
+                    'success': False,
+                    'message': f'Invalid metadata type: {metadata_type}'
+                }, status=400)
             
             # Generate description using LLM
             description = get_metadata_description(metadata_type, name, context)
             
             return Response({
                 'success': True,
-                'description': description
+                'description': description,
+                'context': context  # Include context data in response
             })
+            
+        except (TableMetadata.DoesNotExist, ColumnMetadata.DoesNotExist):
+            return Response({
+                'success': False,
+                'message': f'{metadata_type} with id {metadata_id} not found'
+            }, status=404)
             
         except Exception as e:
             return Response({

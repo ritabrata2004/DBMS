@@ -448,6 +448,12 @@ const DatabaseTester = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [databaseToDelete, setDatabaseToDelete] = useState(null);
 
+  // State for the changes modal
+  const [changesModal, setChangesModal] = useState({
+    open: false,
+    changes: null
+  });
+
   // Load existing databases on component mount
   useEffect(() => {
     const fetchDatabases = async () => {
@@ -563,29 +569,52 @@ const DatabaseTester = () => {
   // Extract metadata from the selected database
   const handleExtractMetadata = async () => {
     if (!selectedDb) {
-      showSnackbar("Please select a database first", "warning");
+      showSnackbar("Please select a database first", "error");
       return;
     }
     
     try {
       setMetadataLoading(true);
       const response = await api.post(`/api/databases/databases/${selectedDb}/extract_metadata/`);
-      
       if (response.data.success) {
-        showSnackbar("Metadata extraction completed successfully!");
-        // After extraction, automatically load schema
-        fetchSchema();
+        showSnackbar(response.data.message, "success");
+        
+        // Show changes modal if there are any changes
+        const changes = response.data.changes;
+        if (changes && (
+            changes.tables.added.length > 0 || 
+            changes.tables.updated.length > 0 || 
+            changes.tables.removed.length > 0 ||
+            changes.columns.added.length > 0 || 
+            changes.columns.updated.length > 0 || 
+            changes.columns.removed.length > 0 ||
+            changes.relationships.added.length > 0 || 
+            changes.relationships.updated.length > 0 || 
+            changes.relationships.removed.length > 0
+        )) {
+          setChangesModal({
+            open: true,
+            changes: changes
+          });
+        }
+        
+        // Refresh schema data if needed
+        if (activeTab === 1) {
+          fetchSchema();
+        } else if (activeTab === 2) {
+          fetchRelationships();
+        }
       } else {
-        showSnackbar(`Metadata extraction failed: ${response.data.message}`, "error");
+        showSnackbar(response.data.message || "Failed to extract metadata", "error");
       }
     } catch (err) {
-      showSnackbar("Failed to extract metadata", "error");
-      console.error("Error extracting metadata:", err);
+      console.error("Metadata extraction error:", err);
+      showSnackbar(`Error extracting metadata: ${err.message}`, "error");
     } finally {
       setMetadataLoading(false);
     }
   };
-  
+
   // Update embeddings for the metadata
   const handleUpdateEmbeddings = async () => {
     if (!selectedDb) {
@@ -776,7 +805,14 @@ const DatabaseTester = () => {
   const generateAIDescription = async (type, name, context) => {
     try {
       setDescriptionLoading(true);
-      const response = await api.generateMetadataDescription(type, name, context);
+      
+      // Add database_id to context for sample value lookup
+      const contextWithDb = {
+        ...context,
+        database_id: selectedDb
+      };
+      
+      const response = await api.generateMetadataDescription(type, name, contextWithDb);
       
       if (response.data.description) {
         setEditDescription(response.data.description);
@@ -1030,9 +1066,8 @@ const DatabaseTester = () => {
                     '&.Mui-focused': {
                       boxShadow: '0 0 0 2px rgba(255, 183, 77, 0.4)'
                     }
-                  }
-                }}
-              />
+                  }}}
+                />
               
               <TextField
                 label="Password"
@@ -1056,9 +1091,8 @@ const DatabaseTester = () => {
                     '&.Mui-focused': {
                       boxShadow: '0 0 0 2px rgba(255, 82, 82, 0.4)'
                     }
-                  }
-                }}
-              />
+                  }}}
+                />
               
               <Button
                 type="submit"
@@ -1934,6 +1968,540 @@ const DatabaseTester = () => {
               disabled={loading}
             >
               {loading ? <CircularProgress size={24} color="inherit" /> : "Delete"}
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Metadata Changes Dialog */}
+        <Dialog
+          open={changesModal.open}
+          onClose={() => setChangesModal({ open: false, changes: null })}
+          aria-labelledby="changes-dialog-title"
+          maxWidth="md"
+          fullWidth
+          PaperProps={{
+            sx: {
+              backgroundColor: '#1F2736',
+              color: '#fff',
+              backgroundImage: 'radial-gradient(circle at top right, rgba(124, 77, 255, 0.1), transparent 70%)'
+            }
+          }}
+        >
+          <DialogTitle id="changes-dialog-title" sx={{ 
+            borderBottom: '1px solid rgba(255, 255, 255, 0.12)',
+            background: 'linear-gradient(90deg, rgba(124, 77, 255, 0.2), rgba(3, 218, 198, 0.2))',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1
+          }}>
+            <RefreshIcon color="primary" />
+            Metadata Changes Summary
+          </DialogTitle>
+          <DialogContent sx={{ mt: 3, mb: 1 }}>
+            {changesModal.changes && (
+              <Box>
+                {/* Tables Section */}
+                <Paper sx={{ mb: 3, p: 2, bgcolor: 'rgba(124, 77, 255, 0.1)', borderRadius: 2, border: '1px solid rgba(124, 77, 255, 0.2)' }}>
+                  <Typography variant="h6" sx={{ 
+                    mb: 2, 
+                    color: '#7C4DFF',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1
+                  }}>
+                    <Box component="span" sx={{ 
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: 28,
+                      height: 28,
+                      borderRadius: '50%',
+                      bgcolor: 'rgba(124, 77, 255, 0.2)',
+                      color: '#7C4DFF',
+                      fontWeight: 'bold',
+                      fontSize: '1rem'
+                    }}>
+                      T
+                    </Box>
+                    Table Changes
+                  </Typography>
+                  
+                  {/* Added Tables */}
+                  {changesModal.changes.tables.added.length > 0 ? (
+                    <Box sx={{ mb: 2 }}>
+                      <Typography variant="subtitle2" sx={{ 
+                        color: '#66BB6A', 
+                        fontWeight: 'bold',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 0.5,
+                        mb: 1
+                      }}>
+                        <AddIcon fontSize="small" />
+                        Added ({changesModal.changes.tables.added.length})
+                      </Typography>
+                      <Box sx={{ 
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        gap: 1,
+                        ml: 3
+                      }}>
+                        {changesModal.changes.tables.added.map((table, idx) => (
+                          <Chip 
+                            key={idx} 
+                            label={`${table.schema}.${table.name}`}
+                            size="small"
+                            sx={{ 
+                              bgcolor: 'rgba(102, 187, 106, 0.1)',
+                              color: '#66BB6A',
+                              border: '1px solid rgba(102, 187, 106, 0.3)'
+                            }}
+                          />
+                        ))}
+                      </Box>
+                    </Box>
+                  ) : (
+                    <Typography variant="body2" sx={{ color: '#B0B8C8', ml: 3, mb: 1 }}>
+                      No tables added
+                    </Typography>
+                  )}
+                  
+                  {/* Updated Tables */}
+                  {changesModal.changes.tables.updated.length > 0 ? (
+                    <Box sx={{ mb: 2 }}>
+                      <Typography variant="subtitle2" sx={{ 
+                        color: '#29B6F6', 
+                        fontWeight: 'bold',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 0.5,
+                        mb: 1
+                      }}>
+                        <RefreshIcon fontSize="small" />
+                        Updated ({changesModal.changes.tables.updated.length})
+                      </Typography>
+                      <Box sx={{ ml: 3 }}>
+                        {changesModal.changes.tables.updated.map((table, idx) => (
+                          <Box key={idx} sx={{ 
+                            mb: 1,
+                            p: 1,
+                            borderRadius: 1,
+                            bgcolor: 'rgba(41, 182, 246, 0.1)',
+                            border: '1px solid rgba(41, 182, 246, 0.2)'
+                          }}>
+                            <Typography variant="body2" sx={{ fontWeight: 'medium', color: '#29B6F6' }}>
+                              {table.schema}.{table.name}
+                            </Typography>
+                            {table.changes?.type && (
+                              <Typography variant="caption" sx={{ display: 'block', color: '#B0B8C8' }}>
+                                Type changed to: <Box component="span" sx={{ color: '#FFB74D' }}>{table.changes.type}</Box>
+                              </Typography>
+                            )}
+                          </Box>
+                        ))}
+                      </Box>
+                    </Box>
+                  ) : (
+                    <Typography variant="body2" sx={{ color: '#B0B8C8', ml: 3, mb: 1 }}>
+                      No tables updated
+                    </Typography>
+                  )}
+                  
+                  {/* Removed Tables */}
+                  {changesModal.changes.tables.removed.length > 0 ? (
+                    <Box>
+                      <Typography variant="subtitle2" sx={{ 
+                        color: '#FF5252', 
+                        fontWeight: 'bold',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 0.5,
+                        mb: 1
+                      }}>
+                        <DeleteIcon fontSize="small" />
+                        Removed ({changesModal.changes.tables.removed.length})
+                      </Typography>
+                      <Box sx={{ 
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        gap: 1,
+                        ml: 3
+                      }}>
+                        {changesModal.changes.tables.removed.map((table, idx) => (
+                          <Chip 
+                            key={idx} 
+                            label={`${table.schema}.${table.name}`}
+                            size="small"
+                            sx={{ 
+                              bgcolor: 'rgba(255, 82, 82, 0.1)',
+                              color: '#FF5252',
+                              border: '1px solid rgba(255, 82, 82, 0.3)'
+                            }}
+                          />
+                        ))}
+                      </Box>
+                    </Box>
+                  ) : (
+                    <Typography variant="body2" sx={{ color: '#B0B8C8', ml: 3 }}>
+                      No tables removed
+                    </Typography>
+                  )}
+                </Paper>
+
+                {/* Columns Section */}
+                <Paper sx={{ mb: 3, p: 2, bgcolor: 'rgba(3, 218, 198, 0.1)', borderRadius: 2, border: '1px solid rgba(3, 218, 198, 0.2)' }}>
+                  <Typography variant="h6" sx={{ 
+                    mb: 2, 
+                    color: '#03DAC6',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1
+                  }}>
+                    <Box component="span" sx={{ 
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: 28,
+                      height: 28,
+                      borderRadius: '50%',
+                      bgcolor: 'rgba(3, 218, 198, 0.2)',
+                      color: '#03DAC6',
+                      fontWeight: 'bold',
+                      fontSize: '1rem'
+                    }}>
+                      C
+                    </Box>
+                    Column Changes
+                  </Typography>
+                  
+                  {/* Added Columns */}
+                  {changesModal.changes.columns.added.length > 0 ? (
+                    <Box sx={{ mb: 2 }}>
+                      <Typography variant="subtitle2" sx={{ 
+                        color: '#66BB6A', 
+                        fontWeight: 'bold',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 0.5,
+                        mb: 1
+                      }}>
+                        <AddIcon fontSize="small" />
+                        Added ({changesModal.changes.columns.added.length})
+                      </Typography>
+                      <Box sx={{ 
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 1,
+                        ml: 3
+                      }}>
+                        {changesModal.changes.columns.added.map((column, idx) => (
+                          <Box key={idx} sx={{ 
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 1 
+                          }}>
+                            <Chip 
+                              label={column.name}
+                              size="small"
+                              sx={{ 
+                                bgcolor: 'rgba(102, 187, 106, 0.1)',
+                                color: '#66BB6A',
+                                border: '1px solid rgba(102, 187, 106, 0.3)'
+                              }}
+                            />
+                            <Typography variant="caption" sx={{ color: '#B0B8C8' }}>
+                              in {column.table} ({column.type})
+                            </Typography>
+                          </Box>
+                        ))}
+                      </Box>
+                    </Box>
+                  ) : (
+                    <Typography variant="body2" sx={{ color: '#B0B8C8', ml: 3, mb: 1 }}>
+                      No columns added
+                    </Typography>
+                  )}
+                  
+                  {/* Updated Columns */}
+                  {changesModal.changes.columns.updated.length > 0 ? (
+                    <Box sx={{ mb: 2 }}>
+                      <Typography variant="subtitle2" sx={{ 
+                        color: '#29B6F6', 
+                        fontWeight: 'bold',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 0.5,
+                        mb: 1
+                      }}>
+                        <RefreshIcon fontSize="small" />
+                        Updated ({changesModal.changes.columns.updated.length})
+                      </Typography>
+                      <Box sx={{ ml: 3 }}>
+                        {changesModal.changes.columns.updated.map((column, idx) => (
+                          <Box key={idx} sx={{ 
+                            mb: 1,
+                            p: 1,
+                            borderRadius: 1,
+                            bgcolor: 'rgba(41, 182, 246, 0.1)',
+                            border: '1px solid rgba(41, 182, 246, 0.2)'
+                          }}>
+                            <Typography variant="body2" sx={{ fontWeight: 'medium', color: '#29B6F6' }}>
+                              {column.name} in {column.table}
+                            </Typography>
+                            {column.changes?.type && (
+                              <Typography variant="caption" sx={{ display: 'block', color: '#B0B8C8' }}>
+                                Type changed to: <Box component="span" sx={{ color: '#FFB74D' }}>{column.changes.type}</Box>
+                              </Typography>
+                            )}
+                            {column.changes?.nullable !== undefined && (
+                              <Typography variant="caption" sx={{ display: 'block', color: '#B0B8C8' }}>
+                                Nullable: <Box component="span" sx={{ color: '#FFB74D' }}>{column.changes.nullable ? 'Yes' : 'No'}</Box>
+                              </Typography>
+                            )}
+                            {column.changes?.primary_key !== undefined && (
+                              <Typography variant="caption" sx={{ display: 'block', color: '#B0B8C8' }}>
+                                Primary Key: <Box component="span" sx={{ color: '#FFB74D' }}>{column.changes.primary_key ? 'Yes' : 'No'}</Box>
+                              </Typography>
+                            )}
+                            {column.changes?.foreign_key !== undefined && (
+                              <Typography variant="caption" sx={{ display: 'block', color: '#B0B8C8' }}>
+                                Foreign Key: <Box component="span" sx={{ color: '#FFB74D' }}>{column.changes.foreign_key ? 'Yes' : 'No'}</Box>
+                              </Typography>
+                            )}
+                          </Box>
+                        ))}
+                      </Box>
+                    </Box>
+                  ) : (
+                    <Typography variant="body2" sx={{ color: '#B0B8C8', ml: 3, mb: 1 }}>
+                      No columns updated
+                    </Typography>
+                  )}
+                  
+                  {/* Removed Columns */}
+                  {changesModal.changes.columns.removed.length > 0 ? (
+                    <Box>
+                      <Typography variant="subtitle2" sx={{ 
+                        color: '#FF5252', 
+                        fontWeight: 'bold',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 0.5,
+                        mb: 1
+                      }}>
+                        <DeleteIcon fontSize="small" />
+                        Removed ({changesModal.changes.columns.removed.length})
+                      </Typography>
+                      <Box sx={{ 
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 1,
+                        ml: 3
+                      }}>
+                        {changesModal.changes.columns.removed.map((column, idx) => (
+                          <Box key={idx} sx={{ 
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 1 
+                          }}>
+                            <Chip 
+                              label={column.name}
+                              size="small"
+                              sx={{ 
+                                bgcolor: 'rgba(255, 82, 82, 0.1)',
+                                color: '#FF5252',
+                                border: '1px solid rgba(255, 82, 82, 0.3)'
+                              }}
+                            />
+                            <Typography variant="caption" sx={{ color: '#B0B8C8' }}>
+                              from {column.table}
+                            </Typography>
+                          </Box>
+                        ))}
+                      </Box>
+                    </Box>
+                  ) : (
+                    <Typography variant="body2" sx={{ color: '#B0B8C8', ml: 3 }}>
+                      No columns removed
+                    </Typography>
+                  )}
+                </Paper>
+
+                {/* Relationships Section */}
+                <Paper sx={{ p: 2, bgcolor: 'rgba(255, 183, 77, 0.1)', borderRadius: 2, border: '1px solid rgba(255, 183, 77, 0.2)' }}>
+                  <Typography variant="h6" sx={{ 
+                    mb: 2, 
+                    color: '#FFB74D',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1
+                  }}>
+                    <Box component="span" sx={{ 
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: 28,
+                      height: 28,
+                      borderRadius: '50%',
+                      bgcolor: 'rgba(255, 183, 77, 0.2)',
+                      color: '#FFB74D',
+                      fontWeight: 'bold',
+                      fontSize: '1rem'
+                    }}>
+                      R
+                    </Box>
+                    Relationship Changes
+                  </Typography>
+                  
+                  {/* Added Relationships */}
+                  {changesModal.changes.relationships.added.length > 0 ? (
+                    <Box sx={{ mb: 2 }}>
+                      <Typography variant="subtitle2" sx={{ 
+                        color: '#66BB6A', 
+                        fontWeight: 'bold',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 0.5,
+                        mb: 1
+                      }}>
+                        <AddIcon fontSize="small" />
+                        Added ({changesModal.changes.relationships.added.length})
+                      </Typography>
+                      <Box sx={{ ml: 3 }}>
+                        {changesModal.changes.relationships.added.map((rel, idx) => (
+                          <Box key={idx} sx={{ 
+                            mb: 1,
+                            p: 1,
+                            borderRadius: 1,
+                            bgcolor: 'rgba(102, 187, 106, 0.1)',
+                            border: '1px solid rgba(102, 187, 106, 0.3)',
+                            color: '#B0B8C8'
+                          }}>
+                            <Typography variant="body2">
+                              <Box component="span" sx={{ color: '#66BB6A', fontWeight: 'medium' }}>
+                                {rel.from_table}.{rel.from_column}
+                              </Box> → 
+                              <Box component="span" sx={{ color: '#66BB6A', fontWeight: 'medium' }}>
+                                {rel.to_table}.{rel.to_column}
+                              </Box>
+                            </Typography>
+                          </Box>
+                        ))}
+                      </Box>
+                    </Box>
+                  ) : (
+                    <Typography variant="body2" sx={{ color: '#B0B8C8', ml: 3, mb: 1 }}>
+                      No relationships added
+                    </Typography>
+                  )}
+                  
+                  {/* Removed Relationships */}
+                  {changesModal.changes.relationships.removed.length > 0 ? (
+                    <Box>
+                      <Typography variant="subtitle2" sx={{ 
+                        color: '#FF5252', 
+                        fontWeight: 'bold',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 0.5,
+                        mb: 1
+                      }}>
+                        <DeleteIcon fontSize="small" />
+                        Removed ({changesModal.changes.relationships.removed.length})
+                      </Typography>
+                      <Box sx={{ ml: 3 }}>
+                        {changesModal.changes.relationships.removed.map((rel, idx) => (
+                          <Box key={idx} sx={{ 
+                            mb: 1,
+                            p: 1,
+                            borderRadius: 1,
+                            bgcolor: 'rgba(255, 82, 82, 0.1)',
+                            border: '1px solid rgba(255, 82, 82, 0.3)',
+                            color: '#B0B8C8'
+                          }}>
+                            <Typography variant="body2">
+                              <Box component="span" sx={{ color: '#FF5252', fontWeight: 'medium' }}>
+                                {rel.from_table}.{rel.from_column}
+                              </Box> → 
+                              <Box component="span" sx={{ color: '#FF5252', fontWeight: 'medium' }}>
+                                {rel.to_table}.{rel.to_column}
+                              </Box>
+                            </Typography>
+                          </Box>
+                        ))}
+                      </Box>
+                    </Box>
+                  ) : (
+                    <Typography variant="body2" sx={{ color: '#B0B8C8', ml: 3 }}>
+                      No relationships removed
+                    </Typography>
+                  )}
+                </Paper>
+                
+                {/* Summary Section */}
+                <Box sx={{ 
+                  mt: 3,
+                  p: 2,
+                  bgcolor: 'rgba(31, 39, 54, 0.8)',
+                  borderRadius: 2,
+                  border: '1px solid rgba(255, 255, 255, 0.05)',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  flexWrap: 'wrap',
+                  gap: 2
+                }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Chip
+                      icon={<AddIcon />}
+                      label={
+                        changesModal.changes.tables.added.length + 
+                        changesModal.changes.columns.added.length + 
+                        changesModal.changes.relationships.added.length
+                      }
+                      size="small"
+                      color="success"
+                      sx={{ bgcolor: 'rgba(102, 187, 106, 0.15)' }}
+                    />
+                    <Typography variant="body2" sx={{ color: '#B0B8C8' }}>Added</Typography>
+                  </Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Chip
+                      icon={<RefreshIcon />}
+                      label={
+                        changesModal.changes.tables.updated.length + 
+                        changesModal.changes.columns.updated.length
+                      }
+                      size="small"
+                      color="info"
+                      sx={{ bgcolor: 'rgba(41, 182, 246, 0.15)' }}
+                    />
+                    <Typography variant="body2" sx={{ color: '#B0B8C8' }}>Updated</Typography>
+                  </Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Chip
+                      icon={<DeleteIcon />}
+                      label={
+                        changesModal.changes.tables.removed.length + 
+                        changesModal.changes.columns.removed.length + 
+                        changesModal.changes.relationships.removed.length
+                      }
+                      size="small"
+                      color="error"
+                      sx={{ bgcolor: 'rgba(255, 82, 82, 0.15)' }}
+                    />
+                    <Typography variant="body2" sx={{ color: '#B0B8C8' }}>Removed</Typography>
+                  </Box>
+                </Box>
+              </Box>
+            )}
+          </DialogContent>
+          <DialogActions sx={{ borderTop: '1px solid rgba(255, 255, 255, 0.12)', px: 3, py: 2 }}>
+            <Button 
+              onClick={() => setChangesModal({ open: false, changes: null })} 
+              variant="contained"
+              color="primary"
+            >
+              Close
             </Button>
           </DialogActions>
         </Dialog>
