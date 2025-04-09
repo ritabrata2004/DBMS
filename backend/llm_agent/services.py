@@ -4,6 +4,10 @@ import json
 from django.conf import settings
 from databases.models import TableMetadata, ColumnMetadata
 import requests 
+import load_dotenv
+
+# load environment variables from .env file
+load_dotenv.load_dotenv()
 
 def llm_api(prompt, model="gpt-4o-mini", temperature=0.7, max_tokens=1000):
     """
@@ -19,6 +23,9 @@ def llm_api(prompt, model="gpt-4o-mini", temperature=0.7, max_tokens=1000):
         dict: The response with success status and content/error
     """
     try:
+        api_key = os.getenv("OPENAI_API_KEY") or getattr(settings, "OPENAI_API_KEY", None)
+        if not api_key:
+            model = "llama-3.1-8b-instant"
         # Determine which API to use based on model name
         use_openai = model.startswith(("gpt", "o1", "o3"))
         
