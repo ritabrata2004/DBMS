@@ -3,42 +3,52 @@ import os
 import json
 from django.conf import settings
 from databases.models import TableMetadata, ColumnMetadata
+import requests 
 
-def llm_api(prompt, model="gpt-4o-mini", temperature=0.7, max_tokens=1000):
+def llm_api(prompt, model="llama3-70b-8192", temperature=0.7, max_tokens=1000):
     """
-    A simple function to interact with OpenAI API for generating SQL queries and database metadata descriptions.
+    A simple function to interact with Groq API.
     
     Args:
-        prompt (str): The prompt to send to the OpenAI API
-        model (str): The model to use, default is gpt-4o-mini
+        prompt (str): The prompt to send to the Groq API
+        model (str): The model to use, default is llama3-70b-8192
         temperature (float): Controls randomness (0-1), default is 0.7
         max_tokens (int): Maximum number of tokens to generate, default is 1000
         
     Returns:
-        dict: The response from the OpenAI API
+        dict: The response with success status and content/error
     """
     try:
-        # Get API key from environment or settings
-        api_key = os.getenv("OPENAI_API_KEY") or getattr(settings, "OPENAI_API_KEY", None)
+        # Get API key from environment
+        api_key = os.getenv("GROQ_API_KEY")
         
         if not api_key:
-            return {"success": False, "error": "OpenAI API key not found. Please set OPENAI_API_KEY environment variable."}
+            return {"success": False, "error": "Groq API key not found. Please set GROQ_API_KEY in your .env file."}
         
-        # Initialize the client
-        client = OpenAI(api_key=api_key)
+        # Set up the request
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json"
+        }
+        
+        data = {
+            "model": model,
+            "messages": [{"role": "user", "content": prompt}],
+            "max_tokens": max_tokens,
+            "temperature": temperature
+        }
         
         # Call the API
-        response = client.chat.completions.create(
-            model=model,
-            messages=[
-                {"role": "user", "content": prompt},
-            ],
-            temperature=temperature,
-            max_tokens=max_tokens
+        response = requests.post(
+            "https://api.groq.com/openai/v1/chat/completions", 
+            headers=headers, 
+            json=data
         )
+        response.raise_for_status()
+        result = response.json()
         
         # Extract the content from the response
-        content = response.choices[0].message.content
+        content = result["choices"][0]["message"]["content"]
         return {
             "success": True,
             "content": content
@@ -46,6 +56,7 @@ def llm_api(prompt, model="gpt-4o-mini", temperature=0.7, max_tokens=1000):
             
     except Exception as e:
         return {"success": False, "error": str(e)}
+
 
 def get_metadata_description(metadata_type, name, sample_data=None):
     """
@@ -111,6 +122,7 @@ Return your answer as a JSON object with the following format:
     "sql_query": "The SQL query",
     "explanation": "Brief explanation of what the query does"
 }}
+You must return only the json and nothing else.
 """
         
         result = llm_api(prompt)
