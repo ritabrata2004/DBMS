@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -32,6 +32,9 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import InfoIcon from '@mui/icons-material/Info';
 import GetAppIcon from '@mui/icons-material/GetApp';
 import * as XLSX from 'xlsx';
+import hljs from 'highlight.js/lib/core';
+import sqlLanguage from 'highlight.js/lib/languages/sql';
+import 'highlight.js/styles/github-dark.css'; // Import a style theme
 
 // TabPanel component for tabs
 function TabPanel(props) {
@@ -66,6 +69,20 @@ const PopupResult = ({
   const theme = useTheme();
   const [tabValue, setTabValue] = useState(0);
   const [copySuccess, setCopySuccess] = useState({ sql: false, json: false });
+  const [highlightedSql, setHighlightedSql] = useState('');
+  
+  // Register SQL language for syntax highlighting
+  useEffect(() => {
+    hljs.registerLanguage('sql', sqlLanguage);
+  }, []);
+  
+  // Highlight SQL code when the sql prop changes or when the component mounts
+  useEffect(() => {
+    if (sql) {
+      const highlighted = hljs.highlight(sql, { language: 'sql' }).value;
+      setHighlightedSql(highlighted);
+    }
+  }, [sql]);
   
   const handleTabChange = (event, newValue) => {
     setTabValue(newValue);
@@ -407,7 +424,10 @@ const PopupResult = ({
               maxHeight: '50vh'
             }}
           >
-            {sql}
+            <div 
+              dangerouslySetInnerHTML={{ __html: highlightedSql }} 
+              className="hljs"
+            />
           </Paper>
         </TabPanel>
       </DialogContent>
