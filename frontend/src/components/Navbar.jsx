@@ -62,6 +62,7 @@ function Navbar() {
   
   // Navigation items
   const navItems = [
+    { name: 'Dashboard', path: '/dashboard', icon: <DashboardIcon /> },
     { name: 'Databases', path: '/databases', icon: <StorageIcon /> },
     { name: 'Metadata Manager', path: '/db-tester', icon: <DashboardIcon /> }
   ];
