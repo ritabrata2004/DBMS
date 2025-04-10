@@ -4,6 +4,10 @@ import json
 from django.conf import settings
 from databases.models import TableMetadata, ColumnMetadata
 import requests 
+import load_dotenv
+
+# load environment variables from .env file
+load_dotenv.load_dotenv()
 
 def llm_api(prompt, model="gpt-4o-mini", temperature=0.7, max_tokens=1000):
     """
@@ -19,7 +23,13 @@ def llm_api(prompt, model="gpt-4o-mini", temperature=0.7, max_tokens=1000):
         dict: The response with success status and content/error
     """
     try:
+        api_key = os.getenv("OPENAI_API_KEY") or getattr(settings, "OPENAI_API_KEY", None)
+        if not api_key:
+            model = "llama-3.1-8b-instant"
         # Determine which API to use based on model name
+        api_key = os.getenv("OPENAI_API_KEY") or getattr(settings, "OPENAI_API_KEY", None)
+        if not api_key:
+            model ="llama-3.1-8b-instant"
         use_openai = model.startswith(("gpt", "o1", "o3"))
         
         if use_openai:
@@ -195,13 +205,24 @@ def nl_to_sql(natural_language_query, database_id):
         dict: Generated SQL query and explanation
     """
     try:
+        # Get the database to ensure it exists
+        from databases.models import ClientDatabase
+        try:
+            database = ClientDatabase.objects.get(id=database_id)
+        except ClientDatabase.DoesNotExist:
+            return {
+                "success": False,
+                "error": f"Database with ID {database_id} does not exist."
+            }
+            
         # Build schema representation from database
         schema = build_schema_representation(database_id)
         
         if not schema:
+            # If metadata hasn't been extracted, inform the user
             return {
                 "success": False,
-                "error": "Could not retrieve database schema. Please ensure metadata has been extracted."
+                "error": "No schema information available for this database. Please extract metadata first by clicking 'Extract Schema' on the database details page."
             }
         
         # Create a schema summary for the prompt

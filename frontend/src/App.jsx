@@ -10,6 +10,7 @@ import Layout from "./components/Layout"
 import DatabaseSelection from "./pages/DatabaseSelection"
 import DatabaseTester from "./pages/DatabaseTester"
 import UserProfile from "./pages/UserProfile"
+import Dashboard from "./pages/Dashboard"
 
 function Logout() {
   localStorage.clear()
@@ -30,6 +31,14 @@ function App() {
           element={
             <ProtectedRoute>
               <DatabaseSelection />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <Dashboard />
             </ProtectedRoute>
           }
         />
