@@ -15,7 +15,8 @@ class DatabaseConnector:
                     user=database_obj.username,
                     password=database_obj.password,
                     host=database_obj.host,
-                    port=database_obj.port
+                    port=database_obj.port,
+                    connect_timeout=5
                 )
                 # Update connection status
                 database_obj.connection_status = 'connected'
