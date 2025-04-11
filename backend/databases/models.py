@@ -84,3 +84,13 @@ class RelationshipMetadata(models.Model):
     
     def __str__(self):
         return f"{self.from_column} -> {self.to_column}"
+
+class ERDiagram(models.Model):
+    """Stores ER diagram representation of a database schema"""
+    database = models.OneToOneField(ClientDatabase, on_delete=models.CASCADE, related_name='er_diagram')
+    diagram_data = models.JSONField(help_text="JSON representation of the ER diagram")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    def __str__(self):
+        return f"ER Diagram for {self.database.name}"
