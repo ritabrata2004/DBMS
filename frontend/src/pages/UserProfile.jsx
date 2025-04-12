@@ -10,10 +10,19 @@ import {
   CircularProgress,
   Alert,
   Snackbar,
-  IconButton
+  IconButton,
+  Divider,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+  Stepper,
+  Step,
+  StepLabel
 } from '@mui/material';
 import { jwtDecode } from 'jwt-decode';
-import { ACCESS_TOKEN } from '../constants';
+import { ACCESS_TOKEN, REFRESH_TOKEN } from '../constants';
 import api from '../api';
 import Layout from '../components/Layout';
 import { ArrowBack as ArrowBackIcon } from '@mui/icons-material';
@@ -30,6 +39,16 @@ function UserProfile() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
+  
+  // Password change states
+  const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
+  const [passwordChangeStep, setPasswordChangeStep] = useState(0);
+  const [passwordChangeLoading, setPasswordChangeLoading] = useState(false);
+  const [passwordChangeError, setPasswordChangeError] = useState(null);
+  const [passwordChangeSuccess, setPasswordChangeSuccess] = useState(false);
+  const [otp, setOtp] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   
   useEffect(() => {
     const fetchUserProfile = async () => {
@@ -90,6 +109,95 @@ function UserProfile() {
       setError(error.response?.data?.detail || 'Failed to update profile');
     } finally {
       setSaving(false);
+    }
+  };
+  
+  // Password change handlers
+  const handleOpenPasswordDialog = () => {
+    setPasswordDialogOpen(true);
+    setPasswordChangeStep(0);
+    setPasswordChangeError(null);
+    setOtp('');
+    setNewPassword('');
+    setConfirmPassword('');
+  };
+  
+  const handleClosePasswordDialog = () => {
+    setPasswordDialogOpen(false);
+    setPasswordChangeError(null);
+  };
+  
+  const handleRequestOtp = async () => {
+    setPasswordChangeLoading(true);
+    setPasswordChangeError(null);
+    
+    try {
+      await api.post('/api/user/request-password-change/');
+      setPasswordChangeStep(1);
+    } catch (error) {
+      console.error('Error requesting OTP:', error);
+      setPasswordChangeError(error.response?.data?.detail || 'Failed to send verification code');
+    } finally {
+      setPasswordChangeLoading(false);
+    }
+  };
+  
+  const handleVerifyOtp = async () => {
+    if (!otp) {
+      setPasswordChangeError('Please enter the verification code');
+      return;
+    }
+    
+    setPasswordChangeLoading(true);
+    setPasswordChangeError(null);
+    
+    try {
+      await api.post('/api/user/verify-otp/', { otp });
+      setPasswordChangeStep(2);
+    } catch (error) {
+      console.error('Error verifying OTP:', error);
+      setPasswordChangeError(error.response?.data?.detail || 'Failed to verify code');
+    } finally {
+      setPasswordChangeLoading(false);
+    }
+  };
+  
+  const handleSetNewPassword = async () => {
+    // Validate passwords
+    if (!newPassword) {
+      setPasswordChangeError('Please enter a new password');
+      return;
+    }
+    
+    if (newPassword !== confirmPassword) {
+      setPasswordChangeError('Passwords do not match');
+      return;
+    }
+    
+    setPasswordChangeLoading(true);
+    setPasswordChangeError(null);
+    
+    try {
+      const response = await api.post('/api/user/set-new-password/', { new_password: newPassword });
+      
+      // Update tokens if provided
+      if (response.data.access) {
+        localStorage.setItem(ACCESS_TOKEN, response.data.access);
+      }
+      if (response.data.refresh) {
+        localStorage.setItem(REFRESH_TOKEN, response.data.refresh);
+      }
+      
+      setPasswordChangeSuccess(true);
+      setTimeout(() => {
+        setPasswordDialogOpen(false);
+        setPasswordChangeSuccess(false);
+      }, 2000);
+    } catch (error) {
+      console.error('Error setting new password:', error);
+      setPasswordChangeError(error.response?.data?.detail || 'Failed to change password');
+    } finally {
+      setPasswordChangeLoading(false);
     }
   };
   
@@ -176,13 +284,153 @@ function UserProfile() {
               variant="contained"
               size="large"
               disabled={saving}
-              sx={{ mt: 2, py: 1.5 }}
+              sx={{ mt: 2, py: 1.5, mr: 2 }}
             >
               {saving ? <CircularProgress size={24} /> : 'Save Changes'}
+            </Button>
+            
+            <Button
+              variant="outlined"
+              size="large"
+              sx={{ mt: 2, py: 1.5 }}
+              onClick={handleOpenPasswordDialog}
+            >
+              Change Password
             </Button>
           </form>
         </Paper>
       </Container>
+      
+      {/* Password Change Dialog */}
+      <Dialog 
+        open={passwordDialogOpen} 
+        onClose={handleClosePasswordDialog}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>Change Password</DialogTitle>
+        <DialogContent>
+          {passwordChangeSuccess ? (
+            <Alert severity="success" sx={{ mt: 2 }}>
+              Password changed successfully!
+            </Alert>
+          ) : (
+            <>
+              <Stepper activeStep={passwordChangeStep} sx={{ my: 3 }}>
+                <Step>
+                  <StepLabel>Request Verification</StepLabel>
+                </Step>
+                <Step>
+                  <StepLabel>Verify Code</StepLabel>
+                </Step>
+                <Step>
+                  <StepLabel>Set New Password</StepLabel>
+                </Step>
+              </Stepper>
+              
+              {passwordChangeError && (
+                <Alert severity="error" sx={{ mb: 3 }}>
+                  {passwordChangeError}
+                </Alert>
+              )}
+              
+              {passwordChangeStep === 0 && (
+                <DialogContentText>
+                  To change your password, we'll send a verification code to your email address: <strong>{user.email}</strong>
+                </DialogContentText>
+              )}
+              
+              {passwordChangeStep === 1 && (
+                <>
+                  <DialogContentText sx={{ mb: 2 }}>
+                    Please enter the verification code sent to your email address.
+                  </DialogContentText>
+                  <TextField
+                    autoFocus
+                    margin="dense"
+                    label="Verification Code"
+                    fullWidth
+                    variant="outlined"
+                    value={otp}
+                    onChange={(e) => setOtp(e.target.value)}
+                    placeholder="Enter 6-digit code"
+                  />
+                </>
+              )}
+              
+              {passwordChangeStep === 2 && (
+                <>
+                  <DialogContentText sx={{ mb: 2 }}>
+                    Enter and confirm your new password.
+                  </DialogContentText>
+                  <TextField
+                    margin="dense"
+                    label="New Password"
+                    type="password"
+                    fullWidth
+                    variant="outlined"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    sx={{ mb: 2 }}
+                  />
+                  <TextField
+                    margin="dense"
+                    label="Confirm New Password"
+                    type="password"
+                    fullWidth
+                    variant="outlined"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                  />
+                </>
+              )}
+            </>
+          )}
+        </DialogContent>
+        
+        <DialogActions sx={{ px: 3, pb: 3 }}>
+          {!passwordChangeSuccess && (
+            <>
+              <Button onClick={handleClosePasswordDialog} color="primary">
+                Cancel
+              </Button>
+              
+              {passwordChangeStep === 0 && (
+                <Button 
+                  onClick={handleRequestOtp} 
+                  variant="contained" 
+                  color="primary"
+                  disabled={passwordChangeLoading}
+                >
+                  {passwordChangeLoading ? <CircularProgress size={24} /> : 'Request Verification Code'}
+                </Button>
+              )}
+              
+              {passwordChangeStep === 1 && (
+                <Button 
+                  onClick={handleVerifyOtp} 
+                  variant="contained" 
+                  color="primary"
+                  disabled={passwordChangeLoading}
+                >
+                  {passwordChangeLoading ? <CircularProgress size={24} /> : 'Verify Code'}
+                </Button>
+              )}
+              
+              {passwordChangeStep === 2 && (
+                <Button 
+                  onClick={handleSetNewPassword} 
+                  variant="contained" 
+                  color="primary"
+                  disabled={passwordChangeLoading}
+                >
+                  {passwordChangeLoading ? <CircularProgress size={24} /> : 'Change Password'}
+                </Button>
+              )}
+            </>
+          )}
+        </DialogActions>
+      </Dialog>
       
       <Snackbar 
         open={success} 
