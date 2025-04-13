@@ -20,10 +20,6 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 ENV_PATH = BASE_DIR / '.env'
 load_dotenv(ENV_PATH)
 
-# Debug the .env file path and loading
-print(f"Looking for .env at: {ENV_PATH.absolute()}")
-print(f"Email settings loaded - USER: {os.environ.get('EMAIL_HOST_USER', 'Not found')}")
-
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 # BASE_DIR is already defined above
 
