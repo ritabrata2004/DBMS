@@ -134,6 +134,18 @@ function Home() {
         }
     };
     
+    // Handle keyboard events for the text field
+    const handleKeyDown = (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            // If Enter is pressed without Shift, submit the form
+            e.preventDefault();
+            if (query.trim() && !loading && currentSessionId) {
+                handleSubmit(e);
+            }
+        }
+        // If Shift+Enter, allow default behavior (new line)
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!query.trim() || !currentSessionId) return;
@@ -196,6 +208,9 @@ function Home() {
             
             // Reload the session to get the updated queries
             loadSession(currentSessionId);
+            
+            // Clear the input field even on error
+            setQuery("");
         } finally {
             setLoading(false);
         }
@@ -1230,6 +1245,16 @@ ${formatQueryResults(executionResponse.data)}
                                     multiline
                                     minRows={1}
                                     maxRows={3}
+                                    onKeyDown={(e) => {
+                                        // Handle Enter key press (without shift) to submit the form
+                                        if (e.key === 'Enter' && !e.shiftKey) {
+                                            e.preventDefault(); // Prevent default to avoid new line
+                                            // Only submit if there's content and we have a session
+                                            if (query.trim() && currentSessionId && !loading) {
+                                                handleSubmit(e);
+                                            }
+                                        }
+                                    }}
                                     InputProps={{
                                         endAdornment: (
                                             <InputAdornment position="end">

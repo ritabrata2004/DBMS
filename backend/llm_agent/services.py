@@ -2,9 +2,9 @@ from openai import OpenAI
 import os
 import json
 import logging
+import requests
 from django.conf import settings
 from databases.models import TableMetadata, ColumnMetadata
-import requests 
 from dotenv import load_dotenv
 
 # load environment variables from .env file
@@ -211,6 +211,7 @@ def get_metadata_description(metadata_type, name, sample_data=None):
 def nl_to_sql(natural_language_query, database_id):
     """
     Convert natural language query to SQL based on the provided database ID.
+    Uses RAG (Retrieval-Augmented Generation) to enhance SQL generation with in-context learning.
     
     Args:
         natural_language_query (str): The natural language question
@@ -222,6 +223,7 @@ def nl_to_sql(natural_language_query, database_id):
     try:
         # Get the database to ensure it exists
         from databases.models import ClientDatabase
+        print("Running nl_to_sql")
         try:
             database = ClientDatabase.objects.get(id=database_id)
         except ClientDatabase.DoesNotExist:
@@ -240,14 +242,23 @@ def nl_to_sql(natural_language_query, database_id):
                 "error": "No schema information available for this database. Please extract metadata first by clicking 'Extract Schema' on the database details page."
             }
         
+        # Fetch similar examples using RAG to enhance in-context learning
+        rag_examples = get_rag_examples(natural_language_query)
+
+        print(f"RAG examples: {rag_examples}")
+        
         # Create a schema summary for the prompt
         schema_summary = json.dumps(schema, indent=2)
         
+        # Build the prompt with in-context learning examples
         prompt = f"""
 Given the following database schema:
 ```
 {schema_summary}
 ```
+
+Here are some examples of natural language questions converted to SQL queries:
+{rag_examples}
 
 Convert this natural language question to a valid SQL query:
 "{natural_language_query}"
@@ -290,6 +301,7 @@ You must return only the json and nothing else.
             }
     
     except Exception as e:
+        logging.exception(f"Error in nl_to_sql: {str(e)}")
         return {"success": False, "error": str(e)}
 
 def build_schema_representation(database_id):
@@ -339,3 +351,60 @@ def build_schema_representation(database_id):
     except Exception as e:
         logging.error(f"Error building schema representation: {str(e)}")
         return []
+
+def get_rag_examples(query, top_k=5):
+    """
+    Fetch relevant question-answer pairs from the RAG server to use as examples
+    for in-context learning.
+    
+    Args:
+        query (str): The natural language query to find similar examples for
+        top_k (int): Number of examples to retrieve
+        
+    Returns:
+        str: Formatted string of example question-answer pairs
+    """
+    try:
+        logging.info(f"Fetching RAG examples for query: {query}")
+        
+        # Make a request to the local RAG server
+        rag_url = "http://localhost:8080/query"
+        payload = {
+            "text": query,
+            "top_k": top_k
+        }
+        
+        response = requests.post(rag_url, json=payload, timeout=10)
+        
+        if response.status_code != 200:
+            logging.error(f"RAG server returned status code {response.status_code}")
+            return ""
+            
+        result = response.json()
+        documents = result.get("documents", [])
+        
+        if not documents:
+            logging.warning("No examples found in RAG response")
+            return ""
+            
+        # Format the examples for in-context learning
+        examples_text = ""
+        for i, doc in enumerate(documents):
+            try:
+                content = doc.get("content", {})
+                question = content.get("question", "")
+                answer = content.get("answer", "")
+                
+                if question and answer:
+                    examples_text += f"Example {i+1}:\n"
+                    examples_text += f"Question: \"{question}\"\n"
+                    examples_text += f"SQL: {answer}\n\n"
+            except Exception as e:
+                logging.error(f"Error processing RAG document: {str(e)}")
+                continue
+        
+        return examples_text
+    
+    except Exception as e:
+        logging.exception(f"Error in get_rag_examples: {str(e)}")
+        return ""
