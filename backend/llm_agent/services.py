@@ -1,46 +1,49 @@
 from openai import OpenAI
 import os
 import json
+import logging
 from django.conf import settings
 from databases.models import TableMetadata, ColumnMetadata
 import requests 
-import load_dotenv
+from dotenv import load_dotenv
 
 # load environment variables from .env file
-load_dotenv.load_dotenv()
+load_dotenv()
 
-def llm_api(prompt, model="gpt-4o-mini", temperature=0.7, max_tokens=1000):
+def llm_api(prompt, model="llama-3.1-8b-instant", temperature=0.7, max_tokens=1000):
     """
     A unified function to interact with either OpenAI or Groq API based on the model name.
     
     Args:
         prompt (str): The prompt to send to the API
-        model (str): The model to use, default is gpt-4o-mini
+        model (str): The model to use, default is llama-3.1-8b-instant
         temperature (float): Controls randomness (0-1), default is 0.7
         max_tokens (int): Maximum number of tokens to generate, default is 1000
         
     Returns:
         dict: The response with success status and content/error
     """
+    logging.info(f"LLM API request with model: {model}")
+    
     try:
-        api_key = os.getenv("OPENAI_API_KEY") or getattr(settings, "OPENAI_API_KEY", None)
-        if not api_key:
+        # Check for OpenAI API key
+        openai_api_key = os.getenv("OPENAI_API_KEY") or getattr(settings, "OPENAI_API_KEY", None)
+        groq_api_key = os.getenv("GROQ_API_KEY")
+        
+        # Determine which API to use based on available keys and model
+        use_openai = model.startswith(("gpt", "o1", "o3")) and openai_api_key
+        
+        # If OpenAI model requested but no key, switch to Groq
+        if model.startswith(("gpt", "o1", "o3")) and not openai_api_key:
+            logging.warning("OpenAI model requested but no API key found. Switching to Groq with llama-3.1-8b-instant.")
             model = "llama-3.1-8b-instant"
-        # Determine which API to use based on model name
-        api_key = os.getenv("OPENAI_API_KEY") or getattr(settings, "OPENAI_API_KEY", None)
-        if not api_key:
-            model ="llama-3.1-8b-instant"
-        use_openai = model.startswith(("gpt", "o1", "o3"))
+            use_openai = False
+        
+        logging.info(f"Using {'OpenAI' if use_openai else 'Groq'} API with model {model}")
         
         if use_openai:
-            # Get OpenAI API key
-            api_key = os.getenv("OPENAI_API_KEY") or getattr(settings, "OPENAI_API_KEY", None)
-            
-            if not api_key:
-                return {"success": False, "error": "OpenAI API key not found. Please set OPENAI_API_KEY environment variable."}
-            
             # Initialize the OpenAI client
-            client = OpenAI(api_key=api_key)
+            client = OpenAI(api_key=openai_api_key)
             
             # Call the OpenAI API
             response = client.chat.completions.create(
@@ -59,17 +62,22 @@ def llm_api(prompt, model="gpt-4o-mini", temperature=0.7, max_tokens=1000):
                 "content": content
             }
         else:
-            # Get Groq API key
-            api_key = os.getenv("GROQ_API_KEY")
-            
-            if not api_key:
+            # Use Groq API
+            if not groq_api_key:
+                logging.error("Groq API key not found")
                 return {"success": False, "error": "Groq API key not found. Please set GROQ_API_KEY in your .env file."}
             
             # Set up the Groq request
             headers = {
-                "Authorization": f"Bearer {api_key}",
+                "Authorization": f"Bearer {groq_api_key}",
                 "Content-Type": "application/json"
             }
+            
+            # Ensure we're using a model that Groq supports
+            groq_models = ["llama-3.1-8b-instant", "llama-3.1-70b-instant", "mixtral-8x7b-32768", "gemma-7b-it"]
+            if model not in groq_models:
+                logging.warning(f"Model {model} may not be supported by Groq. Using llama-3.1-8b-instant instead.")
+                model = "llama-3.1-8b-instant"
             
             data = {
                 "model": model,
@@ -79,23 +87,30 @@ def llm_api(prompt, model="gpt-4o-mini", temperature=0.7, max_tokens=1000):
             }
             
             # Call the Groq API
-            response = requests.post(
-                "https://api.groq.com/openai/v1/chat/completions", 
-                headers=headers, 
-                json=data
-            )
-            response.raise_for_status()
-            result = response.json()
-            
-            # Extract the content from the response
-            content = result["choices"][0]["message"]["content"]
-            return {
-                "success": True,
-                "content": content
-            }
+            logging.info(f"Sending request to Groq API with model {model}")
+            try:
+                response = requests.post(
+                    "https://api.groq.com/openai/v1/chat/completions", 
+                    headers=headers, 
+                    json=data,
+                    timeout=30  # Add timeout to prevent hanging requests
+                )
+                response.raise_for_status()
+                result = response.json()
+                
+                # Extract the content from the response
+                content = result["choices"][0]["message"]["content"]
+                return {
+                    "success": True,
+                    "content": content
+                }
+            except requests.exceptions.RequestException as e:
+                logging.error(f"Error calling Groq API: {str(e)}")
+                return {"success": False, "error": f"Error calling Groq API: {str(e)}"}
             
     except Exception as e:
-        return {"success": False, "error": str(e)}
+        logging.exception(f"Unexpected error in llm_api: {str(e)}")
+        return {"success": False, "error": f"Unexpected error: {str(e)}"}
 
 
 
@@ -287,28 +302,40 @@ def build_schema_representation(database_id):
     Returns:
         list: Schema representation for the LLM
     """
-    tables = TableMetadata.objects.filter(database_id=database_id)
-    schema = []
-    
-    for table in tables:
-        columns = ColumnMetadata.objects.filter(table=table)
-        column_info = []
+    try:
+        tables = TableMetadata.objects.filter(database_id=database_id)
+        schema = []
         
-        for column in columns:
-            column_info.append({
-                'name': column.column_name,
-                'type': column.data_type,
-                'nullable': column.is_nullable,
-                'is_primary_key': column.is_primary_key,
-                'is_foreign_key': column.is_foreign_key,
-                'description': column.description if column.description else ""
-            })
-            
-        schema.append({
-            'table_name': table.table_name,
-            'schema_name': table.schema_name,
-            'description': table.description if table.description else "",
-            'columns': column_info
-        })
+        for table in tables:
+            try:
+                columns = ColumnMetadata.objects.filter(table=table)
+                column_info = []
+                
+                for column in columns:
+                    column_info.append({
+                        'name': column.column_name,
+                        'type': column.data_type,
+                        'nullable': column.is_nullable,
+                        'is_primary_key': column.is_primary_key,
+                        'is_foreign_key': column.is_foreign_key,
+                        'description': column.description if column.description else ""
+                    })
+                    
+                schema.append({
+                    'table_name': table.table_name,
+                    'schema_name': table.schema_name,
+                    'description': table.description if table.description else "",
+                    'columns': column_info
+                })
+            except Exception as e:
+                logging.error(f"Error processing table {table.table_name}: {str(e)}")
+                continue
+                
+        if not schema:
+            logging.warning(f"No schema information found for database ID {database_id}")
         
-    return schema
+        return schema
+        
+    except Exception as e:
+        logging.error(f"Error building schema representation: {str(e)}")
+        return []

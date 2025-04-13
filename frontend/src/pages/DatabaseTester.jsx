@@ -4,401 +4,63 @@ import {
   Paper,
   Typography,
   Box,
-  TextField,
-  Button,
-  Select,
-  MenuItem,
-  FormControl,
-  InputLabel,
   Tab,
   Tabs,
+  Snackbar,
   Alert,
-  CircularProgress,
-  Divider,
-  IconButton,
-  Tooltip,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
-  Chip,
-  Snackbar,
+  Button,
+  IconButton,
   createTheme,
   ThemeProvider
 } from "@mui/material";
-import {
-  Add as AddIcon,
-  Refresh as RefreshIcon,
-  Check as CheckIcon,
-  Edit as EditIcon,
-  AutoAwesome as AutoAwesomeIcon,
-  PlayArrow as PlayArrowIcon,
-  Close as CloseIcon,
-  ArrowBack as ArrowBackIcon,
-  Delete as DeleteIcon
-} from "@mui/icons-material";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import CloseIcon from "@mui/icons-material/Close";
 import { useNavigate } from "react-router-dom";
 import api from "../api";
 import Navbar from "../components/Navbar";
+
+// Import all the component panels
+import DatabaseConnectionForm from "../components/database/DatabaseConnectionForm";
+import DatabaseList from "../components/database/DatabaseList";
+import QueryPanel, { QueryResultPanel } from "../components/database/QueryPanel";
+import SchemaPanel from "../components/database/SchemaPanel";
+import RelationshipsPanel from "../components/database/RelationshipsPanel";
+import SearchPanel from "../components/database/SearchPanel";
+import ERDiagramPanel from "../components/database/ERDiagramPanel";
 
 // Create a dark theme for components
 const darkTheme = createTheme({
   palette: {
     mode: 'dark',
     primary: {
-      main: '#7C4DFF', // Updated to match navbar theme
-      light: '#9F7CFF',
-      dark: '#5A1FFF',
+      main: '#7C4DFF',
     },
     secondary: {
-      main: '#03DAC6', // Updated to match navbar theme
-      light: '#3AEBE0',
-      dark: '#00A99B',
+      main: '#03DAC6',
     },
     error: {
       main: '#FF5252',
-      light: '#FF7D7D',
-      dark: '#C62828',
     },
     warning: {
       main: '#FFB74D',
-      light: '#FFCC80',
-      dark: '#FF9800',
     },
     info: {
       main: '#29B6F6',
-      light: '#4FC3F7',
-      dark: '#0288D1',
     },
     success: {
       main: '#66BB6A',
-      light: '#81C784',
-      dark: '#388E3C',
     },
     background: {
-      default: '#171E2A', // Updated to match navbar theme
-      paper: '#1F2736', // Updated to match navbar theme
+      paper: '#1F2736',
+      default: '#141D2B',
     },
     text: {
       primary: '#FFFFFF',
-      secondary: '#B0B8C8', // Subtle blue-gray tint
-    },
-    divider: 'rgba(255, 255, 255, 0.09)',
-    // Custom table column colors for the metadata tables
-    tableColumns: {
-      col1: {
-        main: '#7C4DFF',
-        light: 'rgba(124, 77, 255, 0.15)',
-        dark: 'rgba(124, 77, 255, 0.25)',
-      },
-      col2: {
-        main: '#03DAC6',
-        light: 'rgba(3, 218, 198, 0.15)',
-        dark: 'rgba(3, 218, 198, 0.25)',
-      },
-      col3: {
-        main: '#FF5252',
-        light: 'rgba(255, 82, 82, 0.15)',
-        dark: 'rgba(255, 82, 82, 0.25)',
-      },
-      col4: {
-        main: '#FFB74D',
-        light: 'rgba(255, 183, 77, 0.15)',
-        dark: 'rgba(255, 183, 77, 0.25)',
-      },
-      col5: {
-        main: '#29B6F6',
-        light: 'rgba(41, 182, 246, 0.15)',
-        dark: 'rgba(41, 182, 246, 0.25)',
-      },
-      col6: {
-        main: '#66BB6A',
-        light: 'rgba(102, 187, 106, 0.15)',
-        dark: 'rgba(102, 187, 106, 0.25)',
-      },
-    },
-  },
-  typography: {
-    fontFamily: [
-      'Inter',
-      'system-ui',
-      '-apple-system',
-      'BlinkMacSystemFont',
-      'Segoe UI',
-      'Roboto',
-      'sans-serif'
-    ].join(','),
-    h4: {
-      fontWeight: 600,
-    },
-    h5: {
-      fontWeight: 600,
-    },
-    h6: {
-      fontWeight: 500,
-    },
-    subtitle1: {
-      fontWeight: 500,
-    },
-    button: {
-      fontWeight: 500,
-      textTransform: 'none',
-    },
-  },
-  shape: {
-    borderRadius: 8,
-  },
-  components: {
-    MuiTextField: {
-      styleOverrides: {
-        root: {
-          '& .MuiOutlinedInput-root': {
-            '& fieldset': {
-              borderColor: 'rgba(255, 255, 255, 0.15)',
-              transition: 'border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
-            },
-            '&:hover fieldset': {
-              borderColor: 'rgba(124, 77, 255, 0.5)', // Updated to match theme
-            },
-            '&.Mui-focused fieldset': {
-              borderColor: '#7C4DFF', // Updated to match theme
-              boxShadow: '0 0 0 2px rgba(124, 77, 255, 0.2)', // Updated to match theme
-            },
-            backgroundColor: 'rgba(31, 39, 54, 0.8)',
-            borderRadius: 8,
-            transition: 'transform 0.2s ease, box-shadow 0.2s ease',
-            '&:hover': {
-              transform: 'translateY(-2px)',
-              boxShadow: '0 4px 12px rgba(124, 77, 255, 0.15)', // Updated to match theme
-            },
-          },
-          '& .MuiInputLabel-root': {
-            color: 'rgba(255, 255, 255, 0.7)',
-            '&.Mui-focused': {
-              color: '#7C4DFF', // Updated to match theme
-            }
-          },
-          '& .MuiOutlinedInput-input': {
-            color: '#fff',
-          },
-          marginBottom: '16px',
-        },
-      },
-    },
-    MuiPaper: {
-      styleOverrides: {
-        root: {
-          backgroundColor: '#1F2736', // Updated to match theme
-          color: '#fff',
-          backgroundImage: 'none',
-          transition: 'box-shadow 0.3s ease-in-out, transform 0.3s ease-in-out',
-          boxShadow: '0 3px 10px rgba(0, 0, 0, 0.2)',
-          '&:hover': {
-            boxShadow: '0 6px 15px rgba(124, 77, 255, 0.2)', // Updated to match theme
-            transform: 'translateY(-4px)',
-          },
-        },
-      },
-    },
-    MuiButton: {
-      styleOverrides: {
-        root: {
-          borderRadius: 8,
-          textTransform: 'none',
-          fontWeight: 500,
-          boxShadow: 'none',
-          transition: 'all 0.3s ease-in-out',
-          position: 'relative',
-          overflow: 'hidden',
-          '&:after': {
-            content: '""',
-            position: 'absolute',
-            top: '-50%',
-            left: '-50%',
-            width: '200%',
-            height: '200%',
-            background: 'radial-gradient(circle, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 70%)',
-            opacity: 0,
-            transform: 'scale(0.5)',
-            transition: 'opacity 0.5s ease, transform 0.5s ease',
-          },
-          '&:hover': {
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
-            transform: 'translateY(-2px)',
-            '&:after': {
-              opacity: 1,
-              transform: 'scale(1)',
-            }
-          },
-          '&:active': {
-            transform: 'translateY(1px)',
-          },
-        },
-        contained: {
-          '&.MuiButton-containedPrimary': {
-            background: 'linear-gradient(45deg, #5A1FFF 10%, #7C4DFF 90%)', // Updated to match theme
-            '&:hover': {
-              background: 'linear-gradient(45deg, #5A1FFF 30%, #7C4DFF 100%)', // Updated to match theme
-            }
-          },
-          '&.MuiButton-containedSecondary': {
-            background: 'linear-gradient(45deg, #00A99B 10%, #03DAC6 90%)', // Updated to match theme
-            '&:hover': {
-              background: 'linear-gradient(45deg, #00A99B 30%, #03DAC6 100%)', // Updated to match theme
-            }
-          },
-          '&.MuiButton-containedSuccess': {
-            background: 'linear-gradient(45deg, #388E3C 10%, #66BB6A 90%)',
-          },
-          '&.MuiButton-containedError': {
-            background: 'linear-gradient(45deg, #C62828 10%, #FF5252 90%)',
-          },
-          '&.MuiButton-containedInfo': {
-            background: 'linear-gradient(45deg, #0288D1 10%, #29B6F6 90%)',
-          },
-          '&.MuiButton-containedWarning': {
-            background: 'linear-gradient(45deg, #FF9800 10%, #FFB74D 90%)',
-          },
-        },
-        outlined: {
-          borderWidth: '1.5px',
-          '&:hover': {
-            borderWidth: '1.5px',
-          },
-        },
-      },
-    },
-    MuiChip: {
-      styleOverrides: {
-        root: {
-          backgroundColor: 'rgba(255, 255, 255, 0.1)',
-          fontWeight: 500,
-          transition: 'all 0.2s ease',
-          '&:hover': {
-            backgroundColor: 'rgba(255, 255, 255, 0.15)',
-            transform: 'translateY(-2px)',
-            boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
-          },
-        },
-        outlined: {
-          borderColor: 'rgba(255, 255, 255, 0.15)',
-          '&:hover': {
-            borderColor: 'rgba(255, 255, 255, 0.25)',
-          },
-        },
-      },
-    },
-    MuiTabs: {
-      styleOverrides: {
-        root: {
-          backgroundColor: 'rgba(0, 0, 0, 0.2)',
-          borderRadius: '8px 8px 0 0',
-          overflow: 'hidden',
-        },
-        indicator: {
-          height: 3,
-          borderRadius: '3px 3px 0 0',
-          background: 'linear-gradient(90deg, #7C4DFF, #03DAC6)', // Updated to match theme
-        },
-      },
-    },
-    MuiTab: {
-      styleOverrides: {
-        root: {
-          color: 'rgba(255, 255, 255, 0.6)',
-          transition: 'color 0.2s ease-in-out, transform 0.2s ease-in-out',
-          '&.Mui-selected': {
-            color: '#fff',
-            fontWeight: 500,
-          },
-          '&:hover': {
-            color: 'rgba(255, 255, 255, 0.9)',
-            transform: 'translateY(-2px)',
-          },
-        },
-      },
-    },
-    MuiIconButton: {
-      styleOverrides: {
-        root: {
-          transition: 'all 0.2s ease-in-out',
-          '&:hover': {
-            backgroundColor: 'rgba(124, 77, 255, 0.1)', // Updated to match theme
-            transform: 'scale(1.1) rotate(5deg)',
-          },
-        },
-      },
-    },
-    MuiMenuItem: {
-      styleOverrides: {
-        root: {
-          transition: 'background-color 0.2s ease-in-out, transform 0.2s ease-in-out',
-          '&:hover': {
-            transform: 'translateX(5px)',
-          }
-        },
-      },
-    },
-    MuiDialog: {
-      styleOverrides: {
-        paper: {
-          borderRadius: 12,
-          boxShadow: '0 8px 24px rgba(0, 0, 0, 0.4)',
-          backgroundImage: 'linear-gradient(135deg, #1F2736 0%, #171E2A 100%)',
-          overflow: 'hidden',
-          '&:before': {
-            content: '""',
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            width: '100%',
-            height: '4px',
-            background: 'linear-gradient(90deg, #7C4DFF, #03DAC6)', // Updated to match theme
-          }
-        },
-      },
-    },
-    MuiTableHead: {
-      styleOverrides: {
-        root: {
-          backgroundColor: 'rgba(0, 0, 0, 0.2)',
-        },
-      },
-    },
-    MuiTableCell: {
-      styleOverrides: {
-        root: {
-          borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-          transition: 'background-color 0.2s ease',
-          '&:hover': {
-            backgroundColor: 'rgba(124, 77, 255, 0.05)', // Updated to match theme
-          }
-        },
-        head: {
-          fontWeight: 600,
-          color: 'rgba(255, 255, 255, 0.8)',
-          background: 'linear-gradient(90deg, rgba(124, 77, 255, 0.08), rgba(3, 218, 198, 0.08))', // Updated to match theme
-        },
-      },
-    },
-    MuiDivider: {
-      styleOverrides: {
-        root: {
-          backgroundColor: 'rgba(255, 255, 255, 0.08)',
-        },
-      },
-    },
-    MuiListItemButton: {
-      styleOverrides: {
-        root: {
-          transition: 'all 0.2s ease-in-out',
-          borderRadius: 8,
-          '&:hover': {
-            backgroundColor: 'rgba(124, 77, 255, 0.08)', // Updated to match theme
-            transform: 'translateX(5px)',
-          },
-        },
-      },
+      secondary: '#B0BEC5',
     },
   },
 });
@@ -409,163 +71,143 @@ const DatabaseTester = () => {
   // State for database connection
   const [databases, setDatabases] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  
-  // State for the form
-  const [formData, setFormData] = useState({
-    name: "",
-    description: "",
-    database_type: "postgresql",
-    host: "localhost",
-    port: 5432,
-    database_name: "",
-    username: "",
-    password: "",
-  });
-
-  // State for query execution
   const [selectedDb, setSelectedDb] = useState(null);
+  const [activeTab, setActiveTab] = useState(0);
+  
+  // State for query tab
   const [query, setQuery] = useState("");
-  const [queryResult, setQueryResult] = useState(null);
   const [queryLoading, setQueryLoading] = useState(false);
   const [queryError, setQueryError] = useState(null);
+  const [queryResult, setQueryResult] = useState(null);
   
-  // State for metadata operations
+  // State for schema metadata
   const [metadataLoading, setMetadataLoading] = useState(false);
   const [schemaData, setSchemaData] = useState(null);
   const [relationshipData, setRelationshipData] = useState(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState(null);
-  const [activeTab, setActiveTab] = useState(0); // 0: query, 1: schema, 2: relationships, 3: search
+  const [metadataLoaded, setMetadataLoaded] = useState(false); // Track if metadata has been loaded
+  
+  // State for description editing
   const [editingDescription, setEditingDescription] = useState(null);
   const [editDescription, setEditDescription] = useState("");
   const [descriptionLoading, setDescriptionLoading] = useState(false);
   
-  // UI states
-  const [snackbarOpen, setSnackbarOpen] = useState(false);
-  const [snackbarMessage, setSnackbarMessage] = useState("");
-  const [snackbarSeverity, setSnackbarSeverity] = useState("success");
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [databaseToDelete, setDatabaseToDelete] = useState(null);
-
-  // State for the changes modal
+  // State for search
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState(null);
+  
+  // State for changes modal
   const [changesModal, setChangesModal] = useState({
     open: false,
     changes: null
   });
-
-  // Load existing databases on component mount
-  useEffect(() => {
-    const fetchDatabases = async () => {
-      try {
-        setLoading(true);
-        const response = await api.get("/api/databases/databases/");
-        setDatabases(response.data);
-        setError(null);
-      } catch (err) {
-        setError("Failed to load databases. Please check your authentication.");
-        console.error("Error loading databases:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchDatabases();
-  }, []);
-
-  // Handle form input changes
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData({
-      ...formData,
-      [name]: name === "port" ? parseInt(value, 10) || "" : value,
+  
+  // State for confirmation dialog
+  const [confirmDialog, setConfirmDialog] = useState({
+    open: false,
+    title: "",
+    message: "",
+    onConfirm: null
+  });
+  
+  // State for the ER diagram
+  const [erDiagramLoading, setErDiagramLoading] = useState(false);
+  const [erDiagramError, setErDiagramError] = useState(null);
+  
+  // State for snackbar notification
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: "",
+    severity: "info"
+  });
+  
+  // Function to show snackbar notification
+  const showSnackbar = (message, severity = "info") => {
+    setSnackbar({
+      open: true,
+      message,
+      severity
     });
   };
-
-  // Handle snackbar notifications
-  const showSnackbar = (message, severity = "success") => {
-    setSnackbarMessage(message);
-    setSnackbarSeverity(severity);
-    setSnackbarOpen(true);
+  
+  // Handle snackbar close
+  const handleCloseSnackbar = () => {
+    setSnackbar({
+      ...snackbar,
+      open: false
+    });
   };
-
-  // Handle database creation
-  const handleCreateDatabase = async (e) => {
-    e.preventDefault();
+  
+  // Load databases on component mount
+  useEffect(() => {
+    fetchDatabases();
+  }, []);
+  
+  // Function to fetch databases from the API
+  const fetchDatabases = async () => {
     try {
       setLoading(true);
-      const response = await api.post("/api/databases/databases/", formData);
-      setDatabases([...databases, response.data]);
-      // Reset form
-      setFormData({
-        name: "",
-        description: "",
-        database_type: "postgresql",
-        host: "localhost",
-        port: 5432,
-        database_name: "",
-        username: "",
-        password: "",
-      });
-      setError(null);
-      showSnackbar("Database added successfully!");
+      const response = await api.getDatabases();
+      setDatabases(response.data);
     } catch (err) {
-      setError("Failed to create database. Please check your inputs.");
-      showSnackbar("Failed to create database", "error");
-      console.error("Error creating database:", err);
+      showSnackbar("Failed to fetch databases", "error");
+      console.error("Error fetching databases:", err);
     } finally {
       setLoading(false);
     }
   };
-
-  // Handle connection testing
+  
+  // Function to fetch all metadata at once
+  const fetchAllMetadata = async (dbId) => {
+    if (!dbId) return;
+    
+    try {
+      setMetadataLoading(true);
+      
+      // Fetch schema data
+      const schemaResponse = await api.get(`/api/databases/databases/${dbId}/schema/`);
+      setSchemaData(schemaResponse.data);
+      
+      // Fetch relationship data
+      const relationshipResponse = await api.get(`/api/databases/databases/${dbId}/relationships/`);
+      setRelationshipData(relationshipResponse.data);
+      
+      // Generate ER diagram
+      try {
+        await api.getERDiagram(dbId);
+      } catch (err) {
+        console.error("Error generating ER diagram:", err);
+        // Non-blocking error, we'll continue even if ER diagram fails
+      }
+      
+      setMetadataLoaded(true);
+      showSnackbar("Metadata loaded successfully", "success");
+    } catch (err) {
+      showSnackbar("Failed to fetch metadata", "error");
+      console.error("Error fetching metadata:", err);
+    } finally {
+      setMetadataLoading(false);
+    }
+  };
+  
+  // Test database connection
   const handleTestConnection = async (dbId) => {
     try {
       setLoading(true);
-      const response = await api.post(`/api/databases/databases/${dbId}/test_connection/`);
-      showSnackbar(
-        response.data.success
-          ? "Connection successful!" 
-          : `Connection failed: ${response.data.message}`,
-        response.data.success ? "success" : "error"
-      );
+      const response = await api.testConnection(dbId);
+      
+      if (response.data.success) {
+        showSnackbar("Connection successful!", "success");
+      } else {
+        showSnackbar("Connection failed: " + response.data.message, "error");
+      }
     } catch (err) {
-      showSnackbar("Failed to test connection", "error");
+      showSnackbar("Connection failed", "error");
       console.error("Error testing connection:", err);
     } finally {
       setLoading(false);
     }
   };
-
-  // Handle query execution
-  const handleExecuteQuery = async (e) => {
-    e.preventDefault();
-    if (!selectedDb) {
-      setQueryError("Please select a database first");
-      return;
-    }
-    if (!query.trim()) {
-      setQueryError("Please enter a query");
-      return;
-    }
-    
-    try {
-      setQueryLoading(true);
-      const response = await api.post(`/api/databases/databases/${selectedDb}/execute_query/`, {
-        query: query
-      });
-      setQueryResult(response.data);
-      setQueryError(null);
-      showSnackbar("Query executed successfully");
-    } catch (err) {
-      setQueryError("Query execution failed");
-      showSnackbar("Query execution failed", "error");
-      console.error("Error executing query:", err);
-    } finally {
-      setQueryLoading(false);
-    }
-  };
-
+  
   // Extract metadata from the selected database
   const handleExtractMetadata = async () => {
     if (!selectedDb) {
@@ -598,39 +240,30 @@ const DatabaseTester = () => {
           });
         }
         
-        // Refresh schema data if needed
-        if (activeTab === 1) {
-          fetchSchema();
-        } else if (activeTab === 2) {
-          fetchRelationships();
-        }
+        // Fetch all metadata after extraction
+        await fetchAllMetadata(selectedDb);
       } else {
-        showSnackbar(response.data.message || "Failed to extract metadata", "error");
+        showSnackbar("Metadata extraction failed", "error");
       }
     } catch (err) {
-      console.error("Metadata extraction error:", err);
-      showSnackbar(`Error extracting metadata: ${err.message}`, "error");
+      showSnackbar("Failed to extract metadata", "error");
+      console.error("Error extracting metadata:", err);
     } finally {
       setMetadataLoading(false);
     }
   };
-
-  // Update embeddings for the metadata
+  
+  // Update embeddings for the selected database
   const handleUpdateEmbeddings = async () => {
     if (!selectedDb) {
-      showSnackbar("Please select a database first", "warning");
+      showSnackbar("Please select a database first", "error");
       return;
     }
     
     try {
       setMetadataLoading(true);
       const response = await api.post(`/api/databases/databases/${selectedDb}/update_embeddings/`);
-      
-      if (response.data.success) {
-        showSnackbar("Embeddings updated successfully!");
-      } else {
-        showSnackbar(`Embeddings update failed: ${response.data.message}`, "error");
-      }
+      showSnackbar(response.data.message, response.data.success ? "success" : "error");
     } catch (err) {
       showSnackbar("Failed to update embeddings", "error");
       console.error("Error updating embeddings:", err);
@@ -640,43 +273,21 @@ const DatabaseTester = () => {
   };
   
   // Fetch schema data for the selected database
-  const fetchSchema = async () => {
-    if (!selectedDb) {
-      showSnackbar("Please select a database first", "warning");
-      return;
+  const fetchSchema = () => {
+    if (!metadataLoaded) {
+      // Only fetch if not already loaded
+      fetchAllMetadata(selectedDb);
     }
-    
-    try {
-      setMetadataLoading(true);
-      const response = await api.get(`/api/databases/databases/${selectedDb}/schema/`);
-      setSchemaData(response.data);
-      setActiveTab(1); // Switch to schema tab
-    } catch (err) {
-      showSnackbar("Failed to fetch schema data", "error");
-      console.error("Error fetching schema:", err);
-    } finally {
-      setMetadataLoading(false);
-    }
+    setActiveTab(1); // Switch to schema tab
   };
   
   // Fetch relationship data for the selected database
-  const fetchRelationships = async () => {
-    if (!selectedDb) {
-      showSnackbar("Please select a database first", "warning");
-      return;
+  const fetchRelationships = () => {
+    if (!metadataLoaded) {
+      // Only fetch if not already loaded  
+      fetchAllMetadata(selectedDb);
     }
-    
-    try {
-      setMetadataLoading(true);
-      const response = await api.get(`/api/databases/databases/${selectedDb}/relationships/`);
-      setRelationshipData(response.data);
-      setActiveTab(2); // Switch to relationships tab
-    } catch (err) {
-      showSnackbar("Failed to fetch relationship data", "error");
-      console.error("Error fetching relationships:", err);
-    } finally {
-      setMetadataLoading(false);
-    }
+    setActiveTab(2); // Switch to relationships tab
   };
   
   // Search metadata in the selected database
@@ -706,44 +317,52 @@ const DatabaseTester = () => {
   };
 
   // Handle database deletion
-  const handleDeleteDatabase = async () => {
-    if (!databaseToDelete) return;
-    
-    try {
-      setLoading(true);
-      await api.delete(`/api/databases/databases/${databaseToDelete}/`);
-      
-      // Update the databases list
-      setDatabases(databases.filter(db => db.id !== databaseToDelete));
-      
-      // If the deleted database was selected, clear selection
-      if (selectedDb === databaseToDelete) {
-        setSelectedDb(null);
-        setQueryResult(null);
-        setQueryError(null);
-        setSchemaData(null);
-        setRelationshipData(null);
-        setSearchResults(null);
+  const handleDeleteDatabase = async (dbId) => {
+    setConfirmDialog({
+      open: true,
+      title: "Confirm Deletion",
+      message: "Are you sure you want to delete this database connection? This action cannot be undone.",
+      onConfirm: async () => {
+        try {
+          await api.deleteDatabase(dbId);
+          showSnackbar("Database deleted successfully", "success");
+          
+          // Update the databases list
+          fetchDatabases();
+          
+          // Reset selected database if it was deleted
+          if (selectedDb === dbId) {
+            setSelectedDb(null);
+            setSchemaData(null);
+            setRelationshipData(null);
+            setQueryResult(null);
+            setSearchResults(null);
+          }
+        } catch (err) {
+          showSnackbar("Failed to delete database", "error");
+          console.error("Error deleting database:", err);
+        } finally {
+          setConfirmDialog({
+            ...confirmDialog,
+            open: false
+          });
+        }
       }
-      
-      showSnackbar("Database deleted successfully");
-      setDatabaseToDelete(null);
-      setDeleteDialogOpen(false);
-    } catch (err) {
-      showSnackbar("Failed to delete database", "error");
-      console.error("Error deleting database:", err);
-    } finally {
-      setLoading(false);
+    });
+  };
+
+  // Handle database added
+  const handleDatabaseAdded = (result) => {
+    if (result.message) {
+      showSnackbar(result.message, result.severity || "info");
+    }
+    
+    if (result.success) {
+      fetchDatabases();
     }
   };
-
-  // Open delete confirmation dialog
-  const openDeleteDialog = (dbId) => {
-    setDatabaseToDelete(dbId);
-    setDeleteDialogOpen(true);
-  };
-
-  // Database selection handler
+  
+  // Handle database selection
   const handleDatabaseSelect = (dbId) => {
     setSelectedDb(dbId);
     setQueryResult(null);
@@ -751,14 +370,12 @@ const DatabaseTester = () => {
     setSchemaData(null);
     setRelationshipData(null);
     setSearchResults(null);
+    setMetadataLoaded(false); // Reset metadata loaded flag
     setActiveTab(0);
     showSnackbar("Database selected");
-  };
-
-  // Handle description editing
-  const handleEditDescription = (type, id, currentDescription) => {
-    setEditingDescription(`${type}_${id}`);
-    setEditDescription(currentDescription);
+    setErDiagramLoading(false);
+    setErDiagramError(null);
+    // fetchAllMetadata will be called by the useEffect above
   };
 
   // Handle description saving
@@ -775,7 +392,9 @@ const DatabaseTester = () => {
         if (type === 'table') {
           setSchemaData((prevSchemaData) =>
             prevSchemaData.map((table) =>
-              table.id === id ? { ...table, description: newDescription } : table
+              table.id === id
+                ? { ...table, description: newDescription }
+                : table
             )
           );
         } else if (type === 'column') {
@@ -783,30 +402,31 @@ const DatabaseTester = () => {
             prevSchemaData.map((table) => ({
               ...table,
               columns: table.columns.map((column) =>
-                column.id === id ? { ...column, description: newDescription } : column
-              )
+                column.id === id
+                  ? { ...column, description: newDescription }
+                  : column
+              ),
             }))
           );
         }
-        setEditingDescription(null);
-        showSnackbar("Description updated successfully");
+        showSnackbar("Description updated successfully", "success");
       } else {
-        showSnackbar("Failed to save description", "error");
+        showSnackbar("Failed to update description", "error");
       }
     } catch (err) {
-      showSnackbar("Error saving description", "error");
-      console.error("Error saving description:", err);
+      showSnackbar("Error updating description", "error");
+      console.error("Error updating description:", err);
     } finally {
       setDescriptionLoading(false);
     }
   };
 
   // Handle AI description generation
-  const generateAIDescription = async (type, name, context) => {
+  const handleGenerateAIDescription = async (type, name, context) => {
     try {
       setDescriptionLoading(true);
       
-      // Add database_id to context for sample value lookup
+      // Add database ID to the context
       const contextWithDb = {
         ...context,
         database_id: selectedDb
@@ -828,15 +448,46 @@ const DatabaseTester = () => {
     }
   };
 
+  // Handle ER diagram generation
+  const handleGenerateERDiagram = async () => {
+    if (!selectedDb) return;
+    
+    setErDiagramLoading(true);
+    setErDiagramError(null);
+    
+    try {
+      // This will indirectly generate the ER diagram on the backend
+      await api.getERDiagram(selectedDb);
+      showSnackbar("ER Diagram generated successfully", "success");
+    } catch (error) {
+      setErDiagramError(`Failed to generate ER diagram: ${error.message}`);
+      showSnackbar(`Error generating ER diagram: ${error.message}`, "error");
+    } finally {
+      setErDiagramLoading(false);
+    }
+  };
+
+  // Handle query execution result from QueryPanel component
+  const handleQueryResult = (result) => {
+    setQueryResult(result);
+  };
+
+  // Load metadata when database is selected
+  useEffect(() => {
+    if (selectedDb) {
+      fetchAllMetadata(selectedDb);
+    }
+  }, [selectedDb]);
+
   return (
     <ThemeProvider theme={darkTheme}>
       <Navbar />
       <Container 
         maxWidth="xl" 
         sx={{ 
-          pt: '84px', // Added top padding to prevent navbar overlap
+          pt: '84px',
           pb: 8,
-          background: 'linear-gradient(180deg, rgba(26, 35, 50, 0.97) 0%, rgba(18, 26, 41, 0.98) 100%)', // Updated to match theme
+          background: 'linear-gradient(180deg, rgba(26, 35, 50, 0.97) 0%, rgba(18, 26, 41, 0.98) 100%)',
           color: '#fff', 
           minHeight: '100vh'
         }}
@@ -845,1663 +496,325 @@ const DatabaseTester = () => {
           <IconButton 
             onClick={() => navigate('/databases')} 
             color="primary" 
-            aria-label="back to databases" 
-            className="mr-2"
+            aria-label="back to databases"
           >
             <ArrowBackIcon />
           </IconButton>
-          <Typography variant="h4" component="h1" sx={{ 
-            fontWeight: 600,
-            background: 'linear-gradient(45deg, #7C4DFF, #03DAC6)', // Updated to match theme
-            backgroundSize: '200% auto',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent'
-          }}>
-            Metadata Manager
+          <Typography variant="h4" sx={{ ml: 1, fontWeight: 700 }}>
+            Database Tester
           </Typography>
         </Box>
-        
-        {/* Main content area with form and controls */}
-        <Box className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-          {/* Database Form Section */}
-          <Paper className="p-6 rounded-lg shadow-md" sx={{ 
-            background: 'linear-gradient(135deg, #1F2736 0%, #1A2332 100%)',
-            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)',
-            position: 'relative',
-            overflow: 'hidden',
-            border: '1px solid rgba(124, 77, 255, 0.3)',
-            '&::before': {
-              content: '""',
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              height: '6px',
-              background: 'linear-gradient(90deg, #7C4DFF, #03DAC6, #FF5252, #FFB74D)',
-              backgroundSize: '300% 100%',
-              animation: 'gradient-animation 4s ease infinite',
-            },
-            '@keyframes gradient-animation': {
-              '0%': { backgroundPosition: '0% 50%' },
-              '50%': { backgroundPosition: '100% 50%' },
-              '100%': { backgroundPosition: '0% 50%' }
-            },
-            '&::after': {
-              content: '""',
-              position: 'absolute',
-              bottom: 0,
-              left: 0,
-              width: '100%',
-              height: '100%',
-              background: 'radial-gradient(circle at bottom right, rgba(124, 77, 255, 0.15), transparent 50%)',
-              pointerEvents: 'none',
-            },
-          }}>
-            <Typography variant="h5" className="mb-4 font-semibold" sx={{
-              background: 'linear-gradient(90deg, #7C4DFF, #03DAC6)',
-              backgroundClip: 'text',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              fontWeight: 600,
-              letterSpacing: '0.5px',
-              textShadow: '0 2px 4px rgba(0,0,0,0.2)'
-            }}>
-              Add Database Connection
-            </Typography>
-            
-            {error && (
-              <Alert severity="error" className="mb-4">
-                {error}
-              </Alert>
-            )}
-            
-            <form onSubmit={handleCreateDatabase} className="space-y-4">
-              <TextField
-                label="Name"
-                name="name"
-                value={formData.name}
-                onChange={handleInputChange}
-                fullWidth
-                required
-                variant="outlined"
-                InputLabelProps={{
-                  style: { color: '#03DAC6' }
-                }}
-                sx={{
-                  '& .MuiOutlinedInput-root': {
-                    background: 'rgba(31, 39, 54, 0.6)',
-                    backdropFilter: 'blur(8px)',
-                    '&:hover': {
-                      boxShadow: '0 4px 12px rgba(124, 77, 255, 0.25)'
-                    },
-                    '&.Mui-focused': {
-                      boxShadow: '0 0 0 2px rgba(124, 77, 255, 0.4)'
-                    }
-                  }
-                }}
-              />
-              
-              <TextField
-                label="Description"
-                name="description"
-                value={formData.description}
-                onChange={handleInputChange}
-                fullWidth
-                multiline
-                rows={2}
-                variant="outlined"
-                InputLabelProps={{
-                  style: { color: '#03DAC6' }
-                }}
-                sx={{
-                  '& .MuiOutlinedInput-root': {
-                    background: 'rgba(31, 39, 54, 0.6)',
-                    backdropFilter: 'blur(8px)',
-                    '&:hover': {
-                      boxShadow: '0 4px 12px rgba(124, 77, 255, 0.25)'
-                    },
-                    '&.Mui-focused': {
-                      boxShadow: '0 0 0 2px rgba(124, 77, 255, 0.4)'
-                    }
-                  }
-                }}
-              />
-              
-              <Box className="grid grid-cols-2 gap-4">
-                <TextField
-                  label="Host"
-                  name="host"
-                  value={formData.host}
-                  onChange={handleInputChange}
-                  fullWidth
-                  required
-                  variant="outlined"
-                  InputLabelProps={{
-                    style: { color: '#7C4DFF' }
-                  }}
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      background: 'rgba(31, 39, 54, 0.6)',
-                      backdropFilter: 'blur(8px)',
-                      '&:hover': {
-                        boxShadow: '0 4px 12px rgba(124, 77, 255, 0.25)'
-                      },
-                      '&.Mui-focused': {
-                        boxShadow: '0 0 0 2px rgba(124, 77, 255, 0.4)'
-                      }
-                    }
-                  }}
-                />
-                
-                <TextField
-                  label="Port"
-                  name="port"
-                  type="number"
-                  value={formData.port}
-                  onChange={handleInputChange}
-                  fullWidth
-                  required
-                  variant="outlined"
-                  InputLabelProps={{
-                    style: { color: '#7C4DFF' }
-                  }}
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      background: 'rgba(31, 39, 54, 0.6)',
-                      backdropFilter: 'blur(8px)',
-                      '&:hover': {
-                        boxShadow: '0 4px 12px rgba(124, 77, 255, 0.25)'
-                      },
-                      '&.Mui-focused': {
-                        boxShadow: '0 0 0 2px rgba(124, 77, 255, 0.4)'
-                      }
-                    }
-                  }}
-                />
-              </Box>
-              
-              <TextField
-                label="Database Name"
-                name="database_name"
-                value={formData.database_name}
-                onChange={handleInputChange}
-                fullWidth
-                required
-                variant="outlined"
-                InputLabelProps={{
-                  style: { color: '#03DAC6' }
-                }}
-                sx={{
-                  '& .MuiOutlinedInput-root': {
-                    background: 'rgba(31, 39, 54, 0.6)',
-                    backdropFilter: 'blur(8px)',
-                    '&:hover': {
-                      boxShadow: '0 4px 12px rgba(3, 218, 198, 0.25)'
-                    },
-                    '&.Mui-focused': {
-                      boxShadow: '0 0 0 2px rgba(3, 218, 198, 0.4)'
-                    }
-                  }
-                }}
-              />
-              
-              <TextField
-                label="Username"
-                name="username"
-                value={formData.username}
-                onChange={handleInputChange}
-                fullWidth
-                required
-                variant="outlined"
-                InputLabelProps={{
-                  style: { color: '#FFB74D' }
-                }}
-                sx={{
-                  '& .MuiOutlinedInput-root': {
-                    background: 'rgba(31, 39, 54, 0.6)',
-                    backdropFilter: 'blur(8px)',
-                    '&:hover': {
-                      boxShadow: '0 4px 12px rgba(255, 183, 77, 0.25)'
-                    },
-                    '&.Mui-focused': {
-                      boxShadow: '0 0 0 2px rgba(255, 183, 77, 0.4)'
-                    }
-                  }}}
-                />
-              
-              <TextField
-                label="Password"
-                name="password"
-                type="password"
-                value={formData.password}
-                onChange={handleInputChange}
-                fullWidth
-                required
-                variant="outlined"
-                InputLabelProps={{
-                  style: { color: '#FF5252' }
-                }}
-                sx={{
-                  '& .MuiOutlinedInput-root': {
-                    background: 'rgba(31, 39, 54, 0.6)',
-                    backdropFilter: 'blur(8px)',
-                    '&:hover': {
-                      boxShadow: '0 4px 12px rgba(255, 82, 82, 0.25)'
-                    },
-                    '&.Mui-focused': {
-                      boxShadow: '0 0 0 2px rgba(255, 82, 82, 0.4)'
-                    }
-                  }}}
-                />
-              
-              <Button
-                type="submit"
-                variant="contained"
-                fullWidth
-                disabled={loading}
-                className="py-3"
-                sx={{
-                  background: 'linear-gradient(45deg, #7C4DFF, #03DAC6)',
-                  backgroundSize: '200% 100%',
-                  transition: 'all 0.3s ease',
-                  marginTop: '24px',
-                  height: '48px',
-                  fontWeight: 600,
-                  textTransform: 'none',
-                  fontSize: '16px',
-                  boxShadow: '0 4px 10px rgba(124, 77, 255, 0.3)',
-                  '&:hover': {
-                    backgroundPosition: 'right center',
-                    boxShadow: '0 6px 15px rgba(124, 77, 255, 0.4)',
-                    transform: 'translateY(-3px)'
-                  }
-                }}
-              >
-                {loading ? <CircularProgress size={24} color="inherit" /> : "Add Database"}
-              </Button>
-            </form>
-          </Paper>
-          
-          {/* Database List & Operations Section */}
-          <Box className="space-y-6">
-            {/* Database Selection */}
-            <Paper className="p-6 rounded-lg shadow-md" sx={{ 
-              backgroundColor: '#1F2736',
-              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)'
-            }}>
-              <Typography variant="h5" className="mb-4 font-semibold">
-                Your Databases
-              </Typography>
-              
-              {loading && <CircularProgress size={24} className="mx-auto my-4 block" />}
-              
-              {databases.length === 0 && !loading ? (
-                <Typography className="text-gray-400 text-center py-4">
-                  No databases added yet.
-                </Typography>
-              ) : (
-                <Box className="divide-y divide-gray-700">
-                  {databases.map((db) => (
-                    <Box key={db.id} className="py-3 flex justify-between items-center">
-                      <Box>
-                        <Typography className="font-semibold">
-                          {db.name}
-                        </Typography>
-                        <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.6)' }}>
-                          {db.host}:{db.port}/{db.database_name}
-                        </Typography>
-                      </Box>
-                      <Box className="space-x-2">
-                        <Button
-                          size="small"
-                          variant="outlined"
-                          onClick={() => handleTestConnection(db.id)}
-                        >
-                          Test
-                        </Button>
-                        <Button
-                          size="small"
-                          variant={selectedDb === db.id ? "contained" : "outlined"}
-                          color="primary"
-                          onClick={() => handleDatabaseSelect(db.id)}
-                        >
-                          {selectedDb === db.id ? "Selected" : "Select"}
-                        </Button>
-                        <Button
-                          size="small"
-                          variant="outlined"
-                          color="error"
-                          onClick={() => openDeleteDialog(db.id)}
-                          startIcon={<DeleteIcon />}
-                        >
-                          Delete
-                        </Button>
-                      </Box>
-                    </Box>
-                  ))}
-                </Box>
-              )}
-              
-              {selectedDb && (
-                <Box className="mt-4 pt-4 border-t border-gray-700">
-                  <Typography variant="subtitle1" className="font-semibold mb-2">
-                    Metadata Operations
-                  </Typography>
-                  <Box className="flex flex-wrap gap-2">
-                    <Button
-                      variant="contained"
-                      color="secondary"
-                      size="small"
-                      disabled={metadataLoading}
-                      onClick={handleExtractMetadata}
-                      startIcon={<RefreshIcon />}
-                    >
-                      Extract Metadata
-                    </Button>
-                    <Button
-                      variant="contained"
-                      color="info"
-                      size="small"
-                      disabled={metadataLoading}
-                      onClick={handleUpdateEmbeddings}
-                    >
-                      Update Embeddings
-                    </Button>
-                    <Button
-                      variant="contained"
-                      color="success"
-                      size="small"
-                      disabled={metadataLoading}
-                      onClick={fetchSchema}
-                    >
-                      View Schema
-                    </Button>
-                    <Button
-                      variant="contained"
-                      color="warning"
-                      size="small"
-                      disabled={metadataLoading}
-                      onClick={fetchRelationships}
-                    >
-                      View Relationships
-                    </Button>
-                  </Box>
-                </Box>
-              )}
-            </Paper>
-            
-            {/* Tabs navigation for different operations */}
-            {selectedDb && (
-              <Paper className="rounded-lg shadow-md" sx={{ 
-                backgroundColor: '#1F2736',
-                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)'
-              }}>
-                <Tabs 
-                  value={activeTab} 
-                  onChange={(e, newValue) => setActiveTab(newValue)}
-                  variant="fullWidth"
-                  sx={{ 
-                    borderBottom: 1, 
-                    borderColor: 'divider',
-                    "& .MuiTabs-indicator": {
-                      background: 'linear-gradient(90deg, #7C4DFF, #03DAC6)', // Updated to match theme
-                    }
-                  }}
-                >
-                  <Tab label="SQL Query" />
-                  <Tab label="Schema" onClick={() => { if (!schemaData) fetchSchema(); }} />
-                  <Tab label="Relationships" onClick={() => { if (!relationshipData) fetchRelationships(); }} />
-                  <Tab label="Search" />
-                </Tabs>
-                
-                <Box className="p-6">
-                  {/* Query Tab Input Form */}
-                  {activeTab === 0 && (
-                    <Box>
-                      <Typography variant="h6" className="mb-4">
-                        Execute SQL Query
-                      </Typography>
-                      
-                      {queryError && (
-                        <Alert severity="error" className="mb-4">
-                          {queryError}
-                        </Alert>
-                      )}
-                      
-                      <form onSubmit={handleExecuteQuery} className="space-y-4">
-                        <TextField
-                          label="SQL Query"
-                          value={query}
-                          onChange={(e) => setQuery(e.target.value)}
-                          fullWidth
-                          multiline
-                          rows={5}
-                          variant="outlined"
-                          placeholder="SELECT * FROM table_name"
-                          required
-                          className="font-mono"
-                          sx={{ 
-                            "& .MuiOutlinedInput-root": { 
-                              backgroundColor: "rgba(31, 39, 54, 0.8)" 
-                            } 
-                          }}
-                        />
-                        
-                        <Button
-                          type="submit"
-                          variant="contained"
-                          color="primary"
-                          disabled={queryLoading}
-                          startIcon={<PlayArrowIcon />}
-                        >
-                          {queryLoading ? "Executing..." : "Execute Query"}
-                        </Button>
-                      </form>
-                    </Box>
-                  )}
-                  
-                  {/* Schema Tab Input Area */}
-                  {activeTab === 1 && (
-                    <Box>
-                      <Typography variant="h6" className="mb-4">
-                        Database Schema
-                      </Typography>
-                      
-                      {metadataLoading && (
-                        <Box className="flex justify-center py-8">
-                          <CircularProgress />
-                        </Box>
-                      )}
-                      
-                      {!metadataLoading && (!schemaData || schemaData.length === 0) && (
-                        <Box className="text-center py-8">
-                          <Typography className="text-gray-400 mb-4">
-                            No schema data available. Please extract metadata first.
-                          </Typography>
-                          <Button
-                            variant="contained"
-                            color="secondary"
-                            onClick={handleExtractMetadata}
-                            disabled={metadataLoading}
-                          >
-                            Extract Metadata
-                          </Button>
-                        </Box>
-                      )}
-                    </Box>
-                  )}
-                  
-                  {/* Relationships Tab Header */}
-                  {activeTab === 2 && (
-                    <Box>
-                      <Typography variant="h6" className="mb-4">
-                        Table Relationships
-                      </Typography>
-                      
-                      {metadataLoading && (
-                        <Box className="flex justify-center py-8">
-                          <CircularProgress />
-                        </Box>
-                      )}
-                      
-                      {!metadataLoading && (!relationshipData || relationshipData.length === 0) && (
-                        <Box className="text-center py-8">
-                          <Typography className="text-gray-400 mb-4">
-                            No relationship data available. Please extract metadata first.
-                          </Typography>
-                          <Button
-                            variant="contained"
-                            color="secondary"
-                            onClick={handleExtractMetadata}
-                            disabled={metadataLoading}
-                          >
-                            Extract Metadata
-                          </Button>
-                        </Box>
-                      )}
-                    </Box>
-                  )}
-                  
-                  {/* Search Tab Input Form */}
-                  {activeTab === 3 && (
-                    <Box>
-                      <Typography variant="h6" className="mb-4">
-                        Search Metadata
-                      </Typography>
-                      
-                      <form onSubmit={handleSearch} className="mb-6">
-                        <Box sx={{ 
-                          display: 'flex', 
-                          alignItems: 'stretch', // Align items to make them the same height
-                          '& .MuiInputBase-root': {
-                            height: '100%' // Ensure consistent height
-                          }
-                        }}>
-                          <TextField
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            placeholder="Search tables, columns, types..."
-                            fullWidth
-                            variant="outlined"
-                            required
-                            sx={{ 
-                              "& .MuiOutlinedInput-root": { 
-                                backgroundColor: "rgba(31, 39, 54, 0.8)",
-                                borderRadius: '8px 0 0 8px'
-                              } 
-                            }}
-                          />
-                          <Button
-                            type="submit"
-                            variant="contained"
-                            color="primary"
-                            disabled={metadataLoading}
-                            sx={{ 
-                              borderRadius: '0 8px 8px 0',
-                              minWidth: '100px',
-                              height: 'auto' // Match height of TextField
-                            }}
-                          >
-                            {metadataLoading ? <CircularProgress size={24} /> : "Search"}
-                          </Button>
-                        </Box>
-                      </form>
-                    </Box>
-                  )}
-                </Box>
-              </Paper>
-            )}
+
+        {/* Top Row - Connection Form and Database List side by side */}
+        <Box sx={{ 
+          display: "flex", 
+          flexDirection: { xs: "column", md: "row" },
+          gap: 3,
+          mb: 4
+        }}>
+          {/* Database Connection Form */}
+          <Box sx={{ flex: { xs: "1", md: "1" }, width: "100%" }}>
+            <DatabaseConnectionForm 
+              onDatabaseAdded={handleDatabaseAdded}
+              darkTheme={darkTheme}
+            />
+          </Box>
+
+          {/* Database List - Now on the right side */}
+          <Box sx={{ flex: { xs: "1", md: "1" }, width: "100%" }}>
+            <DatabaseList 
+              databases={databases}
+              loading={loading}
+              selectedDb={selectedDb}
+              onDatabaseSelect={handleDatabaseSelect}
+              onDeleteClick={handleDeleteDatabase}
+              onTestConnection={handleTestConnection}
+              metadataLoading={metadataLoading}
+              onExtractMetadata={handleExtractMetadata}
+              onUpdateEmbeddings={handleUpdateEmbeddings}
+              onViewSchema={fetchSchema}
+              onViewRelationships={fetchRelationships}
+            />
           </Box>
         </Box>
         
-        {/* Table Results Section - Full Width */}
-        {selectedDb && (
-          <Box className="mt-8 w-full">
-            {/* Query Results Table */}
-            {activeTab === 0 && queryResult && (
-              <Paper className="w-full rounded-lg shadow-md overflow-hidden" sx={{ 
-                backgroundColor: '#1F2736',
-                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)'
-              }}>
-                <Box className="p-4 border-b border-gray-700">
-                  <Typography variant="subtitle1" className="font-semibold mb-2">
-                    Results
+        {/* Bottom section - Schema content */}
+        {selectedDb ? (
+          <Paper className="p-6 rounded-lg shadow-md" sx={{ 
+            backgroundColor: '#1F2736',
+            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)'
+          }}>
+            <Tabs 
+              value={activeTab} 
+              onChange={(e, newValue) => setActiveTab(newValue)}
+              variant="scrollable"
+              scrollButtons="auto"
+            >
+              <Tab label="Connection" />
+              <Tab label="Schema" />
+              <Tab label="Relationships" />
+              <Tab label="Query" />
+              <Tab label="Search" />
+              <Tab label="ER Diagram" />
+            </Tabs>
+
+            <Box sx={{ p: 2 }}>
+              {/* Connection Tab Content */}
+              {activeTab === 0 && (
+                <Box>
+                  <Typography variant="h6" className="mb-4">
+                    Database Connection
                   </Typography>
-                  <Typography variant="caption" className="text-gray-400 mb-2 block">
-                    {queryResult.status}
-                  </Typography>
-                </Box>
-                
-                {queryResult.columns && queryResult.columns.length > 0 ? (
-                  <Box className="overflow-x-auto w-full">
-                    <table className="min-w-full divide-y divide-gray-700">
-                      <thead className="bg-gray-800">
-                        <tr>
-                          {queryResult.columns.map((column, idx) => (
-                            <th
-                              key={idx}
-                              className="px-3 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider"
-                            >
-                              {column}
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody className="bg-gray-700 divide-y divide-gray-600">
-                        {queryResult.rows.map((row, rowIdx) => (
-                          <tr key={rowIdx} className={rowIdx % 2 === 0 ? "bg-gray-800" : "bg-gray-700"}>
-                            {row.map((cell, cellIdx) => (
-                              <td
-                                key={cellIdx}
-                                className="px-3 py-2 text-sm text-gray-300 whitespace-nowrap"
-                              >
-                                {cell === null ? (
-                                  <span className="text-gray-400 italic">NULL</span>
-                                ) : String(cell)}
-                              </td>
-                            ))}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </Box>
-                ) : (
-                  <Typography className="text-center text-gray-400 py-4">
-                    No results returned
-                  </Typography>
-                )}
-              </Paper>
-            )}
-            
-            {/* Schema Data Tables */}
-            {activeTab === 1 && schemaData && schemaData.length > 0 && (
-              <Box className="space-y-6">
-                {schemaData.map((table) => (
-                  <Paper key={table.id} variant="outlined" className="overflow-hidden w-full" sx={{ 
-                    backgroundColor: '#1F2736', 
-                    borderColor: 'rgba(255, 255, 255, 0.12)'
-                  }}>
-                    <Box className="bg-gray-800 p-3 border-b border-gray-700">
-                      <Box className="flex justify-between items-start">
-                        <Box className="flex-grow">
-                          <Typography variant="subtitle1" className="font-medium text-gray-200">
-                            {table.schema_name}.{table.table_name}
-                            <Chip
-                              label={table.table_type}
-                              size="small"
-                              variant="outlined"
-                              className="ml-2 text-xs"
-                              sx={{ backgroundColor: 'rgba(31, 39, 54, 0.8)' }}
-                            />
+                  
+                  {selectedDb && databases.find(db => db.id === selectedDb) && (
+                    <Box>
+                      <Typography variant="subtitle1" className="font-semibold">
+                        {databases.find(db => db.id === selectedDb).name}
+                      </Typography>
+                      <Typography variant="body2" className="text-gray-400">
+                        {databases.find(db => db.id === selectedDb).description}
+                      </Typography>
+                      <Box className="mt-4 grid grid-cols-2 gap-4">
+                        <Box>
+                          <Typography variant="caption" className="text-gray-400 block">
+                            Type
                           </Typography>
-                          
-                          {/* Table Description */}
-                          {editingDescription === `table_${table.id}` ? (
-                            <Box className="mt-2">
-                              <TextField
-                                value={editDescription}
-                                onChange={(e) => setEditDescription(e.target.value)}
-                                fullWidth
-                                multiline
-                                rows={3}
-                                size="small"
-                                variant="outlined"
-                                sx={{ 
-                                  "& .MuiOutlinedInput-root": { 
-                                    backgroundColor: "rgba(31, 39, 54, 0.8)" 
-                                  } 
-                                }}
-                              />
-                              <Box className="flex gap-2 mt-2">
-                                <Button
-                                  size="small"
-                                  variant="contained"
-                                  color="success"
-                                  onClick={() => handleSaveDescription('table', table.id, editDescription)}
-                                  startIcon={<CheckIcon />}
-                                >
-                                  Save
-                                </Button>
-                                <Button
-                                  size="small"
-                                  variant="contained"
-                                  color="primary"
-                                  onClick={() => generateAIDescription('table', table.table_name, {
-                                    schema: table.schema_name,
-                                    columns: table.columns.map(c => c.name).join(', ')
-                                  })}
-                                  disabled={descriptionLoading}
-                                  startIcon={<AutoAwesomeIcon />}
-                                >
-                                  {descriptionLoading ? "Generating..." : "AI Generate"}
-                                </Button>
-                                <Button
-                                  size="small"
-                                  variant="outlined"
-                                  onClick={() => setEditingDescription(null)}
-                                >
-                                  Cancel
-                                </Button>
-                              </Box>
-                            </Box>
-                          ) : (
-                            <Box className="group relative mt-1">
-                              <Typography variant="body2" className="text-gray-300">
-                                {table.description || "No description available."}
-                                <IconButton
-                                  size="small"
-                                  className="ml-1 opacity-0 group-hover:opacity-100"
-                                  onClick={() => handleEditDescription('table', table.id, table.description || "")}
-                                  sx={{ color: 'rgba(255, 255, 255, 0.7)' }}
-                                >
-                                  <EditIcon fontSize="small" />
-                                </IconButton>
-                              </Typography>
-                            </Box>
-                          )}
-                          
-                          {table.row_count !== null && (
-                            <Typography variant="caption" className="text-gray-400 mt-1 block">
-                              Rows: {table.row_count}
-                            </Typography>
-                          )}
+                          <Typography className="font-medium">
+                            {databases.find(db => db.id === selectedDb).database_type}
+                          </Typography>
+                        </Box>
+                        <Box>
+                          <Typography variant="caption" className="text-gray-400 block">
+                            Host
+                          </Typography>
+                          <Typography className="font-medium">
+                            {databases.find(db => db.id === selectedDb).host}
+                          </Typography>
+                        </Box>
+                        <Box>
+                          <Typography variant="caption" className="text-gray-400 block">
+                            Port
+                          </Typography>
+                          <Typography className="font-medium">
+                            {databases.find(db => db.id === selectedDb).port}
+                          </Typography>
+                        </Box>
+                        <Box>
+                          <Typography variant="caption" className="text-gray-400 block">
+                            Database Name
+                          </Typography>
+                          <Typography className="font-medium">
+                            {databases.find(db => db.id === selectedDb).database_name}
+                          </Typography>
+                        </Box>
+                        <Box>
+                          <Typography variant="caption" className="text-gray-400 block">
+                            Username
+                          </Typography>
+                          <Typography className="font-medium">
+                            {databases.find(db => db.id === selectedDb).username}
+                          </Typography>
                         </Box>
                       </Box>
                     </Box>
-                    
-                    {/* Table Columns */}
-                    <Box className="overflow-x-auto w-full">
-                      <table className="min-w-full divide-y divide-gray-700">
-                        <thead>
-                          <tr className="bg-gray-800">
-                            <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider"
-                                style={{ color: '#7C4DFF', borderBottom: '2px solid #7C4DFF' }}>
-                              Column
-                            </th>
-                            <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider"
-                                style={{ color: '#03DAC6', borderBottom: '2px solid #03DAC6' }}>
-                              Type
-                            </th>
-                            <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider"
-                                style={{ color: '#FF5252', borderBottom: '2px solid #FF5252' }}>
-                              Nullable
-                            </th>
-                            <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider"
-                                style={{ color: '#FFB74D', borderBottom: '2px solid #FFB74D' }}>
-                              Key
-                            </th>
-                            <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider"
-                                style={{ color: '#29B6F6', borderBottom: '2px solid #29B6F6' }}>
-                              Description
-                            </th>
-                            <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider"
-                                style={{ color: '#66BB6A', borderBottom: '2px solid #66BB6A' }}>
-                              Actions
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {table.columns.map((column, colIdx) => (
-                            <tr key={column.id}>
-                              <td className="px-3 py-2 text-sm font-medium"
-                                  style={{ 
-                                    backgroundColor: colIdx % 2 === 0 
-                                      ? 'rgba(124, 77, 255, 0.25)'
-                                      : 'rgba(124, 77, 255, 0.15)',
-                                    color: '#7C4DFF'
-                                  }}>
-                                {column.name}
-                              </td>
-                              <td className="px-3 py-2 text-sm"
-                                  style={{ 
-                                    backgroundColor: colIdx % 2 === 0 
-                                      ? 'rgba(3, 218, 198, 0.25)'
-                                      : 'rgba(3, 218, 198, 0.15)',
-                                    color: '#03DAC6'
-                                  }}>
-                                {column.data_type}
-                              </td>
-                              <td className="px-3 py-2 text-sm"
-                                  style={{ 
-                                    backgroundColor: colIdx % 2 === 0 
-                                      ? 'rgba(255, 82, 82, 0.25)'
-                                      : 'rgba(255, 82, 82, 0.15)',
-                                    color: '#FF5252'
-                                  }}>
-                                {column.is_nullable ? "Yes" : "No"}
-                              </td>
-                              <td className="px-3 py-2 text-sm"
-                                  style={{ 
-                                    backgroundColor: colIdx % 2 === 0 
-                                      ? 'rgba(255, 183, 77, 0.25)'
-                                      : 'rgba(255, 183, 77, 0.15)',
-                                    color: '#FFB74D'
-                                  }}>
-                                {column.is_primary_key && (
-                                  <Chip label="PK" size="small" color="primary" variant="outlined" className="mr-1" sx={{ backgroundColor: 'rgba(31, 39, 54, 0.8)' }} />
-                                )}
-                                {column.is_foreign_key && (
-                                  <Chip label="FK" size="small" color="secondary" variant="outlined" sx={{ backgroundColor: 'rgba(31, 39, 54, 0.8)' }} />
-                                )}
-                              </td>
-                              <td className="px-3 py-2 text-sm"
-                                  style={{ 
-                                    backgroundColor: colIdx % 2 === 0 
-                                      ? 'rgba(41, 182, 246, 0.25)'
-                                      : 'rgba(41, 182, 246, 0.15)',
-                                    color: '#29B6F6'
-                                  }}>
-                                {editingDescription === `column_${column.id}` ? (
-                                  <TextField
-                                    value={editDescription}
-                                    onChange={(e) => setEditDescription(e.target.value)}
-                                    fullWidth
-                                    multiline
-                                    rows={2}
-                                    size="small"
-                                    variant="outlined"
-                                    sx={{ 
-                                      "& .MuiOutlinedInput-root": { 
-                                        backgroundColor: "rgba(31, 39, 54, 0.8)" 
-                                      } 
-                                    }}
-                                  />
-                                ) : (
-                                  column.description || "-"
-                                )}
-                              </td>
-                              <td className="px-3 py-2 text-sm"
-                                  style={{ 
-                                    backgroundColor: colIdx % 2 === 0 
-                                      ? 'rgba(102, 187, 106, 0.25)'
-                                      : 'rgba(102, 187, 106, 0.15)',
-                                    color: '#66BB6A'
-                                  }}>
-                                {editingDescription === `column_${column.id}` ? (
-                                  <Box className="flex gap-1">
-                                    <Tooltip title="Save">
-                                      <IconButton
-                                        size="small"
-                                        color="success"
-                                        onClick={() => handleSaveDescription('column', column.id, editDescription)}
-                                      >
-                                        <CheckIcon fontSize="small" />
-                                      </IconButton>
-                                    </Tooltip>
-                                    <Tooltip title="Generate with AI">
-                                      <IconButton
-                                        size="small"
-                                        color="primary"
-                                        onClick={() => generateAIDescription('column', column.name, {
-                                          table: table.table_name,
-                                          schema: table.schema_name,
-                                          data_type: column.data_type,
-                                          is_nullable: column.is_nullable,
-                                          is_primary_key: column.is_primary_key,
-                                          is_foreign_key: column.is_foreign_key
-                                        })}
-                                        disabled={descriptionLoading}
-                                      >
-                                        <AutoAwesomeIcon fontSize="small" />
-                                      </IconButton>
-                                    </Tooltip>
-                                    <Tooltip title="Cancel">
-                                      <IconButton
-                                        size="small"
-                                        onClick={() => setEditingDescription(null)}
-                                      >
-                                        <CloseIcon fontSize="small" />
-                                      </IconButton>
-                                    </Tooltip>
-                                  </Box>
-                                ) : (
-                                  <Tooltip title="Edit Description">
-                                    <IconButton
-                                      size="small"
-                                      onClick={() => handleEditDescription('column', column.id, column.description || "")}
-                                      style={{ color: '#66BB6A' }}
-                                    >
-                                      <EditIcon fontSize="small" />
-                                    </IconButton>
-                                  </Tooltip>
-                                )}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </Box>
-                  </Paper>
-                ))}
-              </Box>
-            )}
-            
-            {/* Relationships Table */}
-            {activeTab === 2 && relationshipData && relationshipData.length > 0 && (
-              <Paper className="overflow-hidden w-full rounded-lg shadow-md" sx={{ 
-                backgroundColor: '#1F2736',
-                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)'
-              }}>
-                <Box className="p-4 border-b border-gray-700">
-                  <Typography variant="subtitle1" className="font-semibold">
-                    Table Relationships
-                  </Typography>
+                  )}
                 </Box>
-                <Box className="overflow-x-auto w-full">
-                  <table className="min-w-full divide-y divide-gray-700">
-                    <thead className="bg-gray-800">
-                      <tr>
-                        <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider"
-                            style={{ color: '#7C4DFF', borderBottom: '2px solid #7C4DFF' }}>
-                          From Table
-                        </th>
-                        <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider"
-                            style={{ color: '#03DAC6', borderBottom: '2px solid #03DAC6' }}>
-                          From Column
-                        </th>
-                        <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider"
-                            style={{ color: '#FF5252', borderBottom: '2px solid #FF5252' }}>
-                          Relationship
-                        </th>
-                        <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider"
-                            style={{ color: '#FFB74D', borderBottom: '2px solid #FFB74D' }}>
-                          To Table
-                        </th>
-                        <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider"
-                            style={{ color: '#29B6F6', borderBottom: '2px solid #29B6F6' }}>
-                          To Column
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {relationshipData.map((rel, relIdx) => (
-                        <tr key={rel.id}>
-                          <td className="px-3 py-2 text-sm"
-                              style={{ 
-                                backgroundColor: relIdx % 2 === 0 
-                                  ? 'rgba(124, 77, 255, 0.25)'
-                                  : 'rgba(124, 77, 255, 0.15)',
-                                color: '#7C4DFF'
-                              }}>
-                            {rel.from_schema}.{rel.from_table}
-                          </td>
-                          <td className="px-3 py-2 text-sm"
-                              style={{ 
-                                backgroundColor: relIdx % 2 === 0 
-                                  ? 'rgba(3, 218, 198, 0.25)'
-                                  : 'rgba(3, 218, 198, 0.15)',
-                                color: '#03DAC6'
-                              }}>
-                            {rel.from_column}
-                          </td>
-                          <td className="px-3 py-2 text-sm"
-                              style={{ 
-                                backgroundColor: relIdx % 2 === 0 
-                                  ? 'rgba(255, 82, 82, 0.25)'
-                                  : 'rgba(255, 82, 82, 0.15)',
-                                color: '#FF5252'
-                              }}>
-                            <Chip
-                              label={rel.relationship_type}
-                              size="small"
-                              color="primary"
-                              variant="outlined"
-                              sx={{ backgroundColor: 'rgba(31, 39, 54, 0.8)' }}
-                            />
-                          </td>
-                          <td className="px-3 py-2 text-sm"
-                              style={{ 
-                                backgroundColor: relIdx % 2 === 0 
-                                  ? 'rgba(255, 183, 77, 0.25)'
-                                  : 'rgba(255, 183, 77, 0.15)',
-                                color: '#FFB74D'
-                              }}>
-                            {rel.to_schema}.{rel.to_table}
-                          </td>
-                          <td className="px-3 py-2 text-sm"
-                              style={{ 
-                                backgroundColor: relIdx % 2 === 0 
-                                  ? 'rgba(41, 182, 246, 0.25)'
-                                  : 'rgba(41, 182, 246, 0.15)',
-                                color: '#29B6F6'
-                              }}>
-                            {rel.to_column}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </Box>
-              </Paper>
-            )}
-            
-            {/* Search Results */}
-            {activeTab === 3 && searchResults && (
-              <Paper className="w-full rounded-lg shadow-md p-4" sx={{ 
-                backgroundColor: '#1F2736',
-                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)'
-              }}>
-                <Typography variant="subtitle1" className="font-semibold mb-4">
-                  Search Results
-                </Typography>
-                
-                {searchResults.length === 0 ? (
-                  <Typography className="text-gray-400 text-center py-4">
-                    No results found for "{searchQuery}"
-                  </Typography>
-                ) : (
-                  <Box className="space-y-3">
-                    {searchResults.map((result, idx) => (
-                      <Paper key={idx} variant="outlined" className="p-3" sx={{ 
-                        backgroundColor: 'rgba(31, 39, 54, 0.8)', 
-                        borderColor: 'rgba(255, 255, 255, 0.12)'
-                      }}>
-                        {result.type === 'table' ? (
-                          <Box>
-                            <Box className="flex items-center">
-                              <Chip
-                                label="Table"
-                                size="small"
-                                color="primary"
-                                className="mr-2"
-                                sx={{ backgroundColor: 'rgba(31, 39, 54, 0.8)' }}
-                              />
-                              <Typography variant="subtitle2">
-                                {result.schema}.{result.name}
-                              </Typography>
-                            </Box>
-                            {result.description && (
-                              <Typography variant="body2" className="text-gray-300 mt-1">
-                                {result.description}
-                              </Typography>
-                            )}
-                          </Box>
-                        ) : (
-                          <Box>
-                            <Box className="flex items-center">
-                              <Chip
-                                label="Column"
-                                size="small"
-                                color="secondary"
-                                className="mr-2"
-                                sx={{ backgroundColor: 'rgba(31, 39, 54, 0.8)' }}
-                              />
-                              <Typography variant="subtitle2">
-                                {result.schema}.{result.table_name}.{result.name}
-                              </Typography>
-                              <Typography variant="caption" className="text-gray-400 ml-2">
-                                ({result.data_type})
-                              </Typography>
-                            </Box>
-                            {result.description && (
-                              <Typography variant="body2" className="text-gray-300 mt-1">
-                                {result.description}
-                              </Typography>
-                            )}
-                          </Box>
-                        )}
-                      </Paper>
-                    ))}
-                  </Box>
-                )}
-              </Paper>
-            )}
+              )}
+              
+              {/* Schema Tab Content */}
+              {activeTab === 1 && (
+                <SchemaPanel 
+                  schemaData={schemaData}
+                  metadataLoading={metadataLoading}
+                  onExtractMetadata={handleExtractMetadata}
+                  onSaveDescription={handleSaveDescription}
+                  onGenerateAIDescription={handleGenerateAIDescription}
+                />
+              )}
+              
+              {/* Relationships Tab Content */}
+              {activeTab === 2 && (
+                <RelationshipsPanel 
+                  relationshipData={relationshipData}
+                  metadataLoading={metadataLoading}
+                  onExtractMetadata={handleExtractMetadata}
+                />
+              )}
+              
+              {/* Query Tab Content */}
+              {activeTab === 3 && (
+                <QueryPanel 
+                  selectedDb={selectedDb}
+                  onQueryResult={handleQueryResult}
+                />
+              )}
+              
+              {/* Search Tab Content */}
+              {activeTab === 4 && (
+                <SearchPanel 
+                  selectedDb={selectedDb}
+                  searchQuery={searchQuery}
+                  setSearchQuery={setSearchQuery}
+                  searchResults={searchResults}
+                  metadataLoading={metadataLoading}
+                  onSearch={handleSearch}
+                />
+              )}
+              
+              {/* ER Diagram Tab Content */}
+              {activeTab === 5 && (
+                <ERDiagramPanel 
+                  selectedDb={selectedDb}
+                  erDiagramLoading={erDiagramLoading}
+                  erDiagramError={erDiagramError}
+                  onGenerateERDiagram={handleGenerateERDiagram}
+                  showSnackbar={showSnackbar}
+                />
+              )}
+            </Box>
+          </Paper>
+        ) : (
+          <Box className="text-center p-8 bg-opacity-50 rounded-lg" sx={{ 
+            backgroundColor: 'rgba(31, 39, 54, 0.5)',
+            border: '1px dashed rgba(255, 255, 255, 0.2)'
+          }}>
+            <Typography variant="h6" className="mb-2">
+              No Database Selected
+            </Typography>
+            <Typography className="text-gray-400">
+              Add a new database connection or select an existing one to start.
+            </Typography>
+          </Box>
+        )}
+        
+        {/* Query Results Section - Full Width */}
+        {selectedDb && activeTab === 3 && queryResult && (
+          <Box className="mt-8 w-full">
+            <QueryResultPanel queryResult={queryResult} />
           </Box>
         )}
         
         {/* Snackbar for notifications */}
         <Snackbar
-          open={snackbarOpen}
-          autoHideDuration={4000}
-          onClose={() => setSnackbarOpen(false)}
-          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+          open={snackbar.open}
+          autoHideDuration={6000}
+          onClose={handleCloseSnackbar}
+          anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
         >
           <Alert 
-            onClose={() => setSnackbarOpen(false)} 
-            severity={snackbarSeverity}
+            onClose={handleCloseSnackbar} 
+            severity={snackbar.severity} 
             variant="filled"
             sx={{ width: '100%' }}
           >
-            {snackbarMessage}
+            {snackbar.message}
           </Alert>
         </Snackbar>
-
-        {/* Delete Confirmation Dialog */}
-        <Dialog
-          open={deleteDialogOpen}
-          onClose={() => setDeleteDialogOpen(false)}
-          aria-labelledby="delete-dialog-title"
-          PaperProps={{
-            sx: {
-              backgroundColor: '#1F2736',
-              color: '#fff'
-            }
-          }}
-        >
-          <DialogTitle id="delete-dialog-title" sx={{ borderBottom: '1px solid rgba(255, 255, 255, 0.12)' }}>
-            Confirm Database Deletion
-          </DialogTitle>
-          <DialogContent sx={{ mt: 2 }}>
-            <Typography>
-              Are you sure you want to delete this database connection? This action cannot be undone.
-            </Typography>
-            <Typography variant="body2" color="error" sx={{ mt: 2 }}>
-              Note: This will only remove the connection from this application, not delete the actual database.
-            </Typography>
-          </DialogContent>
-          <DialogActions sx={{ borderTop: '1px solid rgba(255, 255, 255, 0.12)', px: 3, py: 2 }}>
-            <Button 
-              onClick={() => setDeleteDialogOpen(false)} 
-              variant="outlined"
-              sx={{ 
-                color: 'rgba(255, 255, 255, 0.7)',
-                borderColor: 'rgba(255, 255, 255, 0.23)' 
-              }}
-            >
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleDeleteDatabase} 
-              color="error" 
-              variant="contained"
-              startIcon={<DeleteIcon />}
-              disabled={loading}
-            >
-              {loading ? <CircularProgress size={24} color="inherit" /> : "Delete"}
-            </Button>
-          </DialogActions>
-        </Dialog>
-
-        {/* Metadata Changes Dialog */}
-        <Dialog
-          open={changesModal.open}
-          onClose={() => setChangesModal({ open: false, changes: null })}
-          aria-labelledby="changes-dialog-title"
+        
+        {/* Changes Modal */}
+        <Dialog 
+          open={changesModal.open} 
+          onClose={() => setChangesModal({ ...changesModal, open: false })}
           maxWidth="md"
           fullWidth
-          PaperProps={{
-            sx: {
-              backgroundColor: '#1F2736',
-              color: '#fff',
-              backgroundImage: 'radial-gradient(circle at top right, rgba(124, 77, 255, 0.1), transparent 70%)'
-            }
-          }}
         >
-          <DialogTitle id="changes-dialog-title" sx={{ 
-            borderBottom: '1px solid rgba(255, 255, 255, 0.12)',
-            background: 'linear-gradient(90deg, rgba(124, 77, 255, 0.2), rgba(3, 218, 198, 0.2))',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 1
-          }}>
-            <RefreshIcon color="primary" />
-            Metadata Changes Summary
+          <DialogTitle>
+            Metadata Changes
+            <IconButton
+              aria-label="close"
+              onClick={() => setChangesModal({ ...changesModal, open: false })}
+              sx={{
+                position: 'absolute',
+                right: 8,
+                top: 8,
+              }}
+            >
+              <CloseIcon />
+            </IconButton>
           </DialogTitle>
-          <DialogContent sx={{ mt: 3, mb: 1 }}>
+          <DialogContent dividers>
             {changesModal.changes && (
               <Box>
-                {/* Tables Section */}
-                <Paper sx={{ mb: 3, p: 2, bgcolor: 'rgba(124, 77, 255, 0.1)', borderRadius: 2, border: '1px solid rgba(124, 77, 255, 0.2)' }}>
-                  <Typography variant="h6" sx={{ 
-                    mb: 2, 
-                    color: '#7C4DFF',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 1
-                  }}>
-                    <Box component="span" sx={{ 
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      width: 28,
-                      height: 28,
-                      borderRadius: '50%',
-                      bgcolor: 'rgba(124, 77, 255, 0.2)',
-                      color: '#7C4DFF',
-                      fontWeight: 'bold',
-                      fontSize: '1rem'
-                    }}>
-                      T
-                    </Box>
-                    Table Changes
+                <Typography variant="subtitle1" gutterBottom>
+                  Tables
+                </Typography>
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="body2" color="success.main">
+                    Added: {changesModal.changes.tables.added.length}
                   </Typography>
-                  
-                  {/* Added Tables */}
-                  {changesModal.changes.tables.added.length > 0 ? (
-                    <Box sx={{ mb: 2 }}>
-                      <Typography variant="subtitle2" sx={{ 
-                        color: '#66BB6A', 
-                        fontWeight: 'bold',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 0.5,
-                        mb: 1
-                      }}>
-                        <AddIcon fontSize="small" />
-                        Added ({changesModal.changes.tables.added.length})
-                      </Typography>
-                      <Box sx={{ 
-                        display: 'flex',
-                        flexWrap: 'wrap',
-                        gap: 1,
-                        ml: 3
-                      }}>
-                        {changesModal.changes.tables.added.map((table, idx) => (
-                          <Chip 
-                            key={idx} 
-                            label={`${table.schema}.${table.name}`}
-                            size="small"
-                            sx={{ 
-                              bgcolor: 'rgba(102, 187, 106, 0.1)',
-                              color: '#66BB6A',
-                              border: '1px solid rgba(102, 187, 106, 0.3)'
-                            }}
-                          />
-                        ))}
-                      </Box>
-                    </Box>
-                  ) : (
-                    <Typography variant="body2" sx={{ color: '#B0B8C8', ml: 3, mb: 1 }}>
-                      No tables added
-                    </Typography>
-                  )}
-                  
-                  {/* Updated Tables */}
-                  {changesModal.changes.tables.updated.length > 0 ? (
-                    <Box sx={{ mb: 2 }}>
-                      <Typography variant="subtitle2" sx={{ 
-                        color: '#29B6F6', 
-                        fontWeight: 'bold',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 0.5,
-                        mb: 1
-                      }}>
-                        <RefreshIcon fontSize="small" />
-                        Updated ({changesModal.changes.tables.updated.length})
-                      </Typography>
-                      <Box sx={{ ml: 3 }}>
-                        {changesModal.changes.tables.updated.map((table, idx) => (
-                          <Box key={idx} sx={{ 
-                            mb: 1,
-                            p: 1,
-                            borderRadius: 1,
-                            bgcolor: 'rgba(41, 182, 246, 0.1)',
-                            border: '1px solid rgba(41, 182, 246, 0.2)'
-                          }}>
-                            <Typography variant="body2" sx={{ fontWeight: 'medium', color: '#29B6F6' }}>
-                              {table.schema}.{table.name}
-                            </Typography>
-                            {table.changes?.type && (
-                              <Typography variant="caption" sx={{ display: 'block', color: '#B0B8C8' }}>
-                                Type changed to: <Box component="span" sx={{ color: '#FFB74D' }}>{table.changes.type}</Box>
-                              </Typography>
-                            )}
-                          </Box>
-                        ))}
-                      </Box>
-                    </Box>
-                  ) : (
-                    <Typography variant="body2" sx={{ color: '#B0B8C8', ml: 3, mb: 1 }}>
-                      No tables updated
-                    </Typography>
-                  )}
-                  
-                  {/* Removed Tables */}
-                  {changesModal.changes.tables.removed.length > 0 ? (
-                    <Box>
-                      <Typography variant="subtitle2" sx={{ 
-                        color: '#FF5252', 
-                        fontWeight: 'bold',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 0.5,
-                        mb: 1
-                      }}>
-                        <DeleteIcon fontSize="small" />
-                        Removed ({changesModal.changes.tables.removed.length})
-                      </Typography>
-                      <Box sx={{ 
-                        display: 'flex',
-                        flexWrap: 'wrap',
-                        gap: 1,
-                        ml: 3
-                      }}>
-                        {changesModal.changes.tables.removed.map((table, idx) => (
-                          <Chip 
-                            key={idx} 
-                            label={`${table.schema}.${table.name}`}
-                            size="small"
-                            sx={{ 
-                              bgcolor: 'rgba(255, 82, 82, 0.1)',
-                              color: '#FF5252',
-                              border: '1px solid rgba(255, 82, 82, 0.3)'
-                            }}
-                          />
-                        ))}
-                      </Box>
-                    </Box>
-                  ) : (
-                    <Typography variant="body2" sx={{ color: '#B0B8C8', ml: 3 }}>
-                      No tables removed
-                    </Typography>
-                  )}
-                </Paper>
-
-                {/* Columns Section */}
-                <Paper sx={{ mb: 3, p: 2, bgcolor: 'rgba(3, 218, 198, 0.1)', borderRadius: 2, border: '1px solid rgba(3, 218, 198, 0.2)' }}>
-                  <Typography variant="h6" sx={{ 
-                    mb: 2, 
-                    color: '#03DAC6',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 1
-                  }}>
-                    <Box component="span" sx={{ 
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      width: 28,
-                      height: 28,
-                      borderRadius: '50%',
-                      bgcolor: 'rgba(3, 218, 198, 0.2)',
-                      color: '#03DAC6',
-                      fontWeight: 'bold',
-                      fontSize: '1rem'
-                    }}>
-                      C
-                    </Box>
-                    Column Changes
+                  <Typography variant="body2" color="info.main">
+                    Updated: {changesModal.changes.tables.updated.length}
                   </Typography>
-                  
-                  {/* Added Columns */}
-                  {changesModal.changes.columns.added.length > 0 ? (
-                    <Box sx={{ mb: 2 }}>
-                      <Typography variant="subtitle2" sx={{ 
-                        color: '#66BB6A', 
-                        fontWeight: 'bold',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 0.5,
-                        mb: 1
-                      }}>
-                        <AddIcon fontSize="small" />
-                        Added ({changesModal.changes.columns.added.length})
-                      </Typography>
-                      <Box sx={{ 
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: 1,
-                        ml: 3
-                      }}>
-                        {changesModal.changes.columns.added.map((column, idx) => (
-                          <Box key={idx} sx={{ 
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 1 
-                          }}>
-                            <Chip 
-                              label={column.name}
-                              size="small"
-                              sx={{ 
-                                bgcolor: 'rgba(102, 187, 106, 0.1)',
-                                color: '#66BB6A',
-                                border: '1px solid rgba(102, 187, 106, 0.3)'
-                              }}
-                            />
-                            <Typography variant="caption" sx={{ color: '#B0B8C8' }}>
-                              in {column.table} ({column.type})
-                            </Typography>
-                          </Box>
-                        ))}
-                      </Box>
-                    </Box>
-                  ) : (
-                    <Typography variant="body2" sx={{ color: '#B0B8C8', ml: 3, mb: 1 }}>
-                      No columns added
-                    </Typography>
-                  )}
-                  
-                  {/* Updated Columns */}
-                  {changesModal.changes.columns.updated.length > 0 ? (
-                    <Box sx={{ mb: 2 }}>
-                      <Typography variant="subtitle2" sx={{ 
-                        color: '#29B6F6', 
-                        fontWeight: 'bold',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 0.5,
-                        mb: 1
-                      }}>
-                        <RefreshIcon fontSize="small" />
-                        Updated ({changesModal.changes.columns.updated.length})
-                      </Typography>
-                      <Box sx={{ ml: 3 }}>
-                        {changesModal.changes.columns.updated.map((column, idx) => (
-                          <Box key={idx} sx={{ 
-                            mb: 1,
-                            p: 1,
-                            borderRadius: 1,
-                            bgcolor: 'rgba(41, 182, 246, 0.1)',
-                            border: '1px solid rgba(41, 182, 246, 0.2)'
-                          }}>
-                            <Typography variant="body2" sx={{ fontWeight: 'medium', color: '#29B6F6' }}>
-                              {column.name} in {column.table}
-                            </Typography>
-                            {column.changes?.type && (
-                              <Typography variant="caption" sx={{ display: 'block', color: '#B0B8C8' }}>
-                                Type changed to: <Box component="span" sx={{ color: '#FFB74D' }}>{column.changes.type}</Box>
-                              </Typography>
-                            )}
-                            {column.changes?.nullable !== undefined && (
-                              <Typography variant="caption" sx={{ display: 'block', color: '#B0B8C8' }}>
-                                Nullable: <Box component="span" sx={{ color: '#FFB74D' }}>{column.changes.nullable ? 'Yes' : 'No'}</Box>
-                              </Typography>
-                            )}
-                            {column.changes?.primary_key !== undefined && (
-                              <Typography variant="caption" sx={{ display: 'block', color: '#B0B8C8' }}>
-                                Primary Key: <Box component="span" sx={{ color: '#FFB74D' }}>{column.changes.primary_key ? 'Yes' : 'No'}</Box>
-                              </Typography>
-                            )}
-                            {column.changes?.foreign_key !== undefined && (
-                              <Typography variant="caption" sx={{ display: 'block', color: '#B0B8C8' }}>
-                                Foreign Key: <Box component="span" sx={{ color: '#FFB74D' }}>{column.changes.foreign_key ? 'Yes' : 'No'}</Box>
-                              </Typography>
-                            )}
-                          </Box>
-                        ))}
-                      </Box>
-                    </Box>
-                  ) : (
-                    <Typography variant="body2" sx={{ color: '#B0B8C8', ml: 3, mb: 1 }}>
-                      No columns updated
-                    </Typography>
-                  )}
-                  
-                  {/* Removed Columns */}
-                  {changesModal.changes.columns.removed.length > 0 ? (
-                    <Box>
-                      <Typography variant="subtitle2" sx={{ 
-                        color: '#FF5252', 
-                        fontWeight: 'bold',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 0.5,
-                        mb: 1
-                      }}>
-                        <DeleteIcon fontSize="small" />
-                        Removed ({changesModal.changes.columns.removed.length})
-                      </Typography>
-                      <Box sx={{ 
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: 1,
-                        ml: 3
-                      }}>
-                        {changesModal.changes.columns.removed.map((column, idx) => (
-                          <Box key={idx} sx={{ 
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 1 
-                          }}>
-                            <Chip 
-                              label={column.name}
-                              size="small"
-                              sx={{ 
-                                bgcolor: 'rgba(255, 82, 82, 0.1)',
-                                color: '#FF5252',
-                                border: '1px solid rgba(255, 82, 82, 0.3)'
-                              }}
-                            />
-                            <Typography variant="caption" sx={{ color: '#B0B8C8' }}>
-                              from {column.table}
-                            </Typography>
-                          </Box>
-                        ))}
-                      </Box>
-                    </Box>
-                  ) : (
-                    <Typography variant="body2" sx={{ color: '#B0B8C8', ml: 3 }}>
-                      No columns removed
-                    </Typography>
-                  )}
-                </Paper>
-
-                {/* Relationships Section */}
-                <Paper sx={{ p: 2, bgcolor: 'rgba(255, 183, 77, 0.1)', borderRadius: 2, border: '1px solid rgba(255, 183, 77, 0.2)' }}>
-                  <Typography variant="h6" sx={{ 
-                    mb: 2, 
-                    color: '#FFB74D',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 1
-                  }}>
-                    <Box component="span" sx={{ 
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      width: 28,
-                      height: 28,
-                      borderRadius: '50%',
-                      bgcolor: 'rgba(255, 183, 77, 0.2)',
-                      color: '#FFB74D',
-                      fontWeight: 'bold',
-                      fontSize: '1rem'
-                    }}>
-                      R
-                    </Box>
-                    Relationship Changes
+                  <Typography variant="body2" color="error.main">
+                    Removed: {changesModal.changes.tables.removed.length}
                   </Typography>
-                  
-                  {/* Added Relationships */}
-                  {changesModal.changes.relationships.added.length > 0 ? (
-                    <Box sx={{ mb: 2 }}>
-                      <Typography variant="subtitle2" sx={{ 
-                        color: '#66BB6A', 
-                        fontWeight: 'bold',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 0.5,
-                        mb: 1
-                      }}>
-                        <AddIcon fontSize="small" />
-                        Added ({changesModal.changes.relationships.added.length})
-                      </Typography>
-                      <Box sx={{ ml: 3 }}>
-                        {changesModal.changes.relationships.added.map((rel, idx) => (
-                          <Box key={idx} sx={{ 
-                            mb: 1,
-                            p: 1,
-                            borderRadius: 1,
-                            bgcolor: 'rgba(102, 187, 106, 0.1)',
-                            border: '1px solid rgba(102, 187, 106, 0.3)',
-                            color: '#B0B8C8'
-                          }}>
-                            <Typography variant="body2">
-                              <Box component="span" sx={{ color: '#66BB6A', fontWeight: 'medium' }}>
-                                {rel.from_table}.{rel.from_column}
-                              </Box> → 
-                              <Box component="span" sx={{ color: '#66BB6A', fontWeight: 'medium' }}>
-                                {rel.to_table}.{rel.to_column}
-                              </Box>
-                            </Typography>
-                          </Box>
-                        ))}
-                      </Box>
-                    </Box>
-                  ) : (
-                    <Typography variant="body2" sx={{ color: '#B0B8C8', ml: 3, mb: 1 }}>
-                      No relationships added
-                    </Typography>
-                  )}
-                  
-                  {/* Removed Relationships */}
-                  {changesModal.changes.relationships.removed.length > 0 ? (
-                    <Box>
-                      <Typography variant="subtitle2" sx={{ 
-                        color: '#FF5252', 
-                        fontWeight: 'bold',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 0.5,
-                        mb: 1
-                      }}>
-                        <DeleteIcon fontSize="small" />
-                        Removed ({changesModal.changes.relationships.removed.length})
-                      </Typography>
-                      <Box sx={{ ml: 3 }}>
-                        {changesModal.changes.relationships.removed.map((rel, idx) => (
-                          <Box key={idx} sx={{ 
-                            mb: 1,
-                            p: 1,
-                            borderRadius: 1,
-                            bgcolor: 'rgba(255, 82, 82, 0.1)',
-                            border: '1px solid rgba(255, 82, 82, 0.3)',
-                            color: '#B0B8C8'
-                          }}>
-                            <Typography variant="body2">
-                              <Box component="span" sx={{ color: '#FF5252', fontWeight: 'medium' }}>
-                                {rel.from_table}.{rel.from_column}
-                              </Box> → 
-                              <Box component="span" sx={{ color: '#FF5252', fontWeight: 'medium' }}>
-                                {rel.to_table}.{rel.to_column}
-                              </Box>
-                            </Typography>
-                          </Box>
-                        ))}
-                      </Box>
-                    </Box>
-                  ) : (
-                    <Typography variant="body2" sx={{ color: '#B0B8C8', ml: 3 }}>
-                      No relationships removed
-                    </Typography>
-                  )}
-                </Paper>
+                </Box>
                 
-                {/* Summary Section */}
-                <Box sx={{ 
-                  mt: 3,
-                  p: 2,
-                  bgcolor: 'rgba(31, 39, 54, 0.8)',
-                  borderRadius: 2,
-                  border: '1px solid rgba(255, 255, 255, 0.05)',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  flexWrap: 'wrap',
-                  gap: 2
-                }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <Chip
-                      icon={<AddIcon />}
-                      label={
-                        changesModal.changes.tables.added.length + 
-                        changesModal.changes.columns.added.length + 
-                        changesModal.changes.relationships.added.length
-                      }
-                      size="small"
-                      color="success"
-                      sx={{ bgcolor: 'rgba(102, 187, 106, 0.15)' }}
-                    />
-                    <Typography variant="body2" sx={{ color: '#B0B8C8' }}>Added</Typography>
-                  </Box>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <Chip
-                      icon={<RefreshIcon />}
-                      label={
-                        changesModal.changes.tables.updated.length + 
-                        changesModal.changes.columns.updated.length
-                      }
-                      size="small"
-                      color="info"
-                      sx={{ bgcolor: 'rgba(41, 182, 246, 0.15)' }}
-                    />
-                    <Typography variant="body2" sx={{ color: '#B0B8C8' }}>Updated</Typography>
-                  </Box>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <Chip
-                      icon={<DeleteIcon />}
-                      label={
-                        changesModal.changes.tables.removed.length + 
-                        changesModal.changes.columns.removed.length + 
-                        changesModal.changes.relationships.removed.length
-                      }
-                      size="small"
-                      color="error"
-                      sx={{ bgcolor: 'rgba(255, 82, 82, 0.15)' }}
-                    />
-                    <Typography variant="body2" sx={{ color: '#B0B8C8' }}>Removed</Typography>
-                  </Box>
+                <Typography variant="subtitle1" gutterBottom>
+                  Columns
+                </Typography>
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="body2" color="success.main">
+                    Added: {changesModal.changes.columns.added.length}
+                  </Typography>
+                  <Typography variant="body2" color="info.main">
+                    Updated: {changesModal.changes.columns.updated.length}
+                  </Typography>
+                  <Typography variant="body2" color="error.main">
+                    Removed: {changesModal.changes.columns.removed.length}
+                  </Typography>
+                </Box>
+                
+                <Typography variant="subtitle1" gutterBottom>
+                  Relationships
+                </Typography>
+                <Box>
+                  <Typography variant="body2" color="success.main">
+                    Added: {changesModal.changes.relationships.added.length}
+                  </Typography>
+                  <Typography variant="body2" color="info.main">
+                    Updated: {changesModal.changes.relationships.updated.length}
+                  </Typography>
+                  <Typography variant="body2" color="error.main">
+                    Removed: {changesModal.changes.relationships.removed.length}
+                  </Typography>
                 </Box>
               </Box>
             )}
           </DialogContent>
-          <DialogActions sx={{ borderTop: '1px solid rgba(255, 255, 255, 0.12)', px: 3, py: 2 }}>
+          <DialogActions>
             <Button 
-              onClick={() => setChangesModal({ open: false, changes: null })} 
-              variant="contained"
+              onClick={() => setChangesModal({ ...changesModal, open: false })}
               color="primary"
             >
               Close
+            </Button>
+          </DialogActions>
+        </Dialog>
+        
+        {/* Confirmation Dialog */}
+        <Dialog
+          open={confirmDialog.open}
+          onClose={() => setConfirmDialog({ ...confirmDialog, open: false })}
+        >
+          <DialogTitle>{confirmDialog.title}</DialogTitle>
+          <DialogContent>
+            <Typography>{confirmDialog.message}</Typography>
+          </DialogContent>
+          <DialogActions>
+            <Button 
+              onClick={() => setConfirmDialog({ ...confirmDialog, open: false })} 
+              color="primary"
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={confirmDialog.onConfirm} 
+              color="error" 
+              variant="contained"
+              autoFocus
+            >
+              Confirm
             </Button>
           </DialogActions>
         </Dialog>

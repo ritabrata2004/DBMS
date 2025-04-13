@@ -79,4 +79,8 @@ api.executeSqlQuery = (databaseId, sqlQuery) =>
     query: sqlQuery,
   });
 
+// ER Diagram
+api.getERDiagram = (databaseId) =>
+  api.get(`/api/databases/databases/${databaseId}/er_diagram/`);
+
 export default api;

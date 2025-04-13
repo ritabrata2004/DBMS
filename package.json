@@ -1,6 +1,0 @@
-{
-  "dependencies": {
-    "firebase": "^11.6.0",
-    "framer-motion": "^12.6.3"
-  }
-}

@@ -66,6 +66,11 @@ class DatabaseViewSet(viewsets.ModelViewSet):
         extractor = MetadataExtractor()
         success, message, changes = extractor.extract_full_metadata(database)
         
+        # Generate ER diagram after metadata extraction
+        if success:
+            from .services import generate_er_diagram
+            generate_er_diagram(database.id)
+        
         return Response({
             'success': success,
             'message': message,
@@ -171,7 +176,7 @@ class DatabaseViewSet(viewsets.ModelViewSet):
         
         vectorizer = MetadataVectorizer()
         results = vectorizer.search_metadata(database, query)
-        
+
         return Response(results)
     
     @action(detail=True, methods=['post'])
@@ -321,3 +326,24 @@ class DatabaseViewSet(viewsets.ModelViewSet):
                 'success': False,
                 'message': str(e)
             }, status=500)
+    
+    @action(detail=True, methods=['get'])
+    def er_diagram(self, request, pk=None):
+        """Get or generate ER diagram for a database"""
+        database = self.get_object()
+        
+        from .services import generate_er_diagram
+        from .models import ERDiagram
+        
+        # Try to get an existing diagram
+        try:
+            diagram = ERDiagram.objects.get(database=database)
+            return Response(diagram.diagram_data)
+        except ERDiagram.DoesNotExist:
+            # Generate new diagram if it doesn't exist
+            result = generate_er_diagram(database.id)
+            
+            if result["success"]:
+                return Response(result["diagram_data"])
+            else:
+                return Response({"error": result["error"]}, status=status.HTTP_400_BAD_REQUEST)

@@ -765,3 +765,145 @@ class MetadataVectorizer:
         # Sort by score (descending) and limit results
         results.sort(key=lambda x: x['score'], reverse=True)
         return results[:limit]
+
+def generate_er_diagram(database_id):
+    """
+    Generate an ER diagram representation for a database in JSON format
+    
+    Args:
+        database_id (int): The database ID to generate diagram for
+        
+    Returns:
+        dict: JSON representation of the database ER diagram
+    """
+    try:
+        from .models import TableMetadata, ColumnMetadata, RelationshipMetadata, ClientDatabase, ERDiagram
+        from datetime import datetime
+
+        # Get database schema information
+        tables = TableMetadata.objects.filter(database_id=database_id)
+        
+        if not tables:
+            return {
+                "success": False, 
+                "error": "No schema information available for this database"
+            }
+        
+        # Build nodes (tables)
+        nodes = []
+        node_positions = {}
+        
+        # Calculate initial positions for tables
+        grid_size = int(len(tables) ** 0.5) + 1
+        grid_spacing = 300
+        
+        for i, table in enumerate(tables):
+            # Calculate grid position
+            row = i // grid_size
+            col = i % grid_size
+            
+            # Generate a unique ID for this table
+            table_id = f"{table.schema_name}.{table.table_name}"
+            
+            # Create position
+            position = {
+                'x': col * grid_spacing, 
+                'y': row * grid_spacing
+            }
+            
+            # Store position
+            node_positions[table_id] = position
+            
+            columns = ColumnMetadata.objects.filter(table=table)
+            column_info = []
+            
+            for column in columns:
+                column_info.append({
+                    'name': column.column_name,
+                    'type': column.data_type,
+                    'is_nullable': column.is_nullable,
+                    'is_primary_key': column.is_primary_key,
+                    'is_foreign_key': column.is_foreign_key,
+                    'description': column.description if column.description else ""
+                })
+            
+            # Create node
+            nodes.append({
+                "id": table_id,
+                "type": "tableNode",
+                "position": position,
+                "data": {
+                    "label": table.table_name,
+                    "schema": table.schema_name,
+                    "description": table.description if table.description else "",
+                    "columns": column_info
+                },
+                "width": 220,
+                "height": 40 + len(column_info) * 24  # Dynamic height based on number of columns
+            })
+        
+        # Build edges (relationships)
+        edges = []
+        
+        # Get relationships
+        relationships = RelationshipMetadata.objects.filter(
+            from_column__table__database_id=database_id
+        )
+        
+        for rel in relationships:
+            from_table = rel.from_column.table
+            to_table = rel.to_column.table
+            
+            source_id = f"{from_table.schema_name}.{from_table.table_name}"
+            target_id = f"{to_table.schema_name}.{to_table.table_name}"
+            
+            edge_id = f"e-{rel.from_column.id}-{rel.to_column.id}"
+            
+            edges.append({
+                "id": edge_id,
+                "source": source_id,
+                "target": target_id,
+                "animated": True,
+                "style": {
+                    "stroke": "#7C4DFF",
+                    "strokeWidth": 2
+                },
+                "markerEnd": {
+                    "type": "arrowclosed",
+                    "color": "#7C4DFF"
+                },
+                "data": {
+                    "from_column": rel.from_column.column_name,
+                    "to_column": rel.to_column.column_name,
+                    "relationship_type": rel.relationship_type,
+                    "label": f"{rel.from_column.column_name} → {rel.to_column.column_name}"
+                },
+                "label": f"{rel.from_column.column_name} → {rel.to_column.column_name}"
+            })
+        
+        # Create complete diagram data
+        diagram_data = {
+            "nodes": nodes,
+            "edges": edges,
+            "metadata": {
+                "database_id": database_id,
+                "generated_at": datetime.now().isoformat()
+            }
+        }
+        
+        # Store the diagram data in the database
+        database = ClientDatabase.objects.get(id=database_id)
+        
+        # Update or create ER diagram
+        diagram, created = ERDiagram.objects.update_or_create(
+            database=database,
+            defaults={"diagram_data": diagram_data}
+        )
+        
+        return {
+            "success": True,
+            "diagram_data": diagram_data
+        }
+        
+    except Exception as e:
+        return {"success": False, "error": str(e)}
