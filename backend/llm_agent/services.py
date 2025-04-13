@@ -10,13 +10,13 @@ from dotenv import load_dotenv
 # load environment variables from .env file
 load_dotenv()
 
-def llm_api(prompt, model="llama-3.1-8b-instant", temperature=0.7, max_tokens=1000):
+def llm_api(prompt, model="gpt-4o-mini", temperature=0.7, max_tokens=1000):
     """
     A unified function to interact with either OpenAI or Groq API based on the model name.
     
     Args:
         prompt (str): The prompt to send to the API
-        model (str): The model to use, default is llama-3.1-8b-instant
+        model (str): The model to use, default is gpt-4o-mini
         temperature (float): Controls randomness (0-1), default is 0.7
         max_tokens (int): Maximum number of tokens to generate, default is 1000
         
