@@ -161,6 +161,11 @@ function Sessions() {
     navigate('/query', { state: { sessionId: session.id, database: selectedDatabase } });
   };
 
+  // Handle session selection
+  const handleSessionSelect = (session) => {
+    navigate(`/query/${session.id}`);
+  };
+
   const showSnackbar = (message, severity = 'success') => {
     setSnackbarMessage(message);
     setSnackbarSeverity(severity);
@@ -288,7 +293,7 @@ function Sessions() {
                   }
                   divider
                 >
-                  <ListItemButton onClick={() => handleSelectSession(session)} sx={{ py: 2 }}>
+                  <ListItemButton onClick={() => handleSessionSelect(session)} sx={{ py: 2 }}>
                     <ListItemText
                       primary={
                         <Typography variant="h6" sx={{ fontSize: '1.1rem' }}>

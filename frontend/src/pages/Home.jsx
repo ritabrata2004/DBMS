@@ -2,45 +2,31 @@ import { useState, useEffect, useRef } from "react";
 import api from "../api";
 import "../styles/Home.css";
 import { 
-  Typography, 
-  Paper, 
   Box,
-  Button,
-  TextField,
+  Typography,
   IconButton,
-  AppBar,
-  Toolbar,
-  Drawer,
-  Chip,
-  useMediaQuery,
-  useTheme,
-  InputAdornment,
-  Avatar,
   Fade,
   alpha,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogContentText,
-  DialogTitle,
+  useMediaQuery,
+  useTheme,
 } from "@mui/material";
-import SendIcon from '@mui/icons-material/Send';
-import LogoutIcon from '@mui/icons-material/Logout';
-import MenuIcon from '@mui/icons-material/Menu';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import SmartToyIcon from '@mui/icons-material/SmartToy';
-import PersonIcon from '@mui/icons-material/Person';
-import VisibilityIcon from '@mui/icons-material/Visibility';
-import DeleteIcon from '@mui/icons-material/Delete';
-import { useNavigate, useLocation } from 'react-router-dom';
-import SessionSelector from "../components/SessionSelector";
+import { useNavigate, useParams } from 'react-router-dom';
 import LoadingIndicator from "../components/LoadingIndicator";
 import Navbar from "../components/Navbar";
 import PopupResult from "../components/PopupResult";
 
+// Import our custom component files
+import Sidebar from "../components/home/Sidebar";
+import MobileHeader from "../components/home/MobileHeader";
+import SessionMessages from "../components/home/SessionMessages";
+import QueryInput from "../components/home/QueryInput";
+
 function Home() {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+    const { sessionId } = useParams();
+    const navigate = useNavigate();
     
     const [query, setQuery] = useState("");
     const [response, setResponse] = useState("");
@@ -50,9 +36,8 @@ function Home() {
     const [showSqlControls, setShowSqlControls] = useState(false);
     const [showResultPopup, setShowResultPopup] = useState(false);
     const [queryResult, setQueryResult] = useState(null);
-    const [currentNaturalQuery, setCurrentNaturalQuery] = useState(""); // New state for storing natural language query
-    const [historicQueryData, setHistoricQueryData] = useState(null); // Store historic query data for popup
-    const navigate = useNavigate();
+    const [currentNaturalQuery, setCurrentNaturalQuery] = useState(""); 
+    const [historicQueryData, setHistoricQueryData] = useState(null); 
     const messagesEndRef = useRef(null);
     const messagesContainerRef = useRef(null);
     
@@ -60,42 +45,50 @@ function Home() {
     const [currentSessionId, setCurrentSessionId] = useState(null);
     const [currentSession, setCurrentSession] = useState(null);
     const [drawerOpen, setDrawerOpen] = useState(false);
+    const [database, setDatabase] = useState(null);
 
     // Sidebar width for calculations
     const sidebarWidth = 320;
     
-    // On component mount, we need to either load the user's most recent session
-    // or create a new one if none exists
+    // Load the session data based on sessionId from URL
     useEffect(() => {
-        const initializeSession = async () => {
+        const loadSessionData = async () => {
+            if (!sessionId) {
+                navigate('/sessions');
+                return;
+            }
+            
+            setInitialLoading(true);
             try {
-                // Try to get user's sessions
-                const sessionsResponse = await api.getSessions();
-                const sessions = sessionsResponse.data;
+                const sessionResponse = await api.getSession(sessionId);
+                const sessionData = sessionResponse.data;
                 
-                if (sessions.length > 0) {
-                    // If user has sessions, load the most recent one
-                    const mostRecentSession = sessions[0]; // API returns sessions ordered by updated_at
-                    loadSession(mostRecentSession.id);
-                } else {
-                    // If user has no sessions, redirect to database selection
-                    // since we can't create a session without a database
-                    navigate('/');
-                    setInitialLoading(false);
+                // Set the session
+                setCurrentSession(sessionData);
+                setCurrentSessionId(sessionId);
+                
+                // Load database data if database_id exists
+                if (sessionData.database_id) {
+                    try {
+                        const dbResponse = await api.getDatabase(sessionData.database_id);
+                        setDatabase(dbResponse.data);
+                    } catch (err) {
+                        console.error("Error loading database:", err);
+                    }
                 }
             } catch (error) {
-                console.error("Error initializing session:", error);
+                console.error("Error loading session:", error);
+                // Show an error message to the user
+                alert("Failed to load session. The session may not exist or you don't have permission to access it.");
+                // Redirect to sessions page
+                navigate('/sessions');
+            } finally {
                 setInitialLoading(false);
             }
         };
         
-        // Use a semaphore to prevent multiple initializations
-        let isInitializing = false;
-        if (!isInitializing) {
-            isInitializing = true;
-            initializeSession();
-        }
-    }, []);
+        loadSessionData();
+    }, [sessionId, navigate]);
 
     // Scroll to bottom whenever messages change
     useEffect(() => {
@@ -132,18 +125,6 @@ function Home() {
         } finally {
             setInitialLoading(false);
         }
-    };
-    
-    // Handle keyboard events for the text field
-    const handleKeyDown = (e) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            // If Enter is pressed without Shift, submit the form
-            e.preventDefault();
-            if (query.trim() && !loading && currentSessionId) {
-                handleSubmit(e);
-            }
-        }
-        // If Shift+Enter, allow default behavior (new line)
     };
 
     const handleSubmit = async (e) => {
@@ -300,7 +281,6 @@ ${formatQueryResults(executionResponse.data)}
     const copyToClipboard = (text) => {
         navigator.clipboard.writeText(text)
             .then(() => {
-                // Could show a temporary "Copied!" notification here
                 console.log("Text copied to clipboard");
             })
             .catch(err => {
@@ -311,8 +291,6 @@ ${formatQueryResults(executionResponse.data)}
     // Helper function to clean SQL query by removing markdown code block markers
     const cleanSqlQuery = (sql) => {
         if (!sql) return sql;
-        
-        // Remove ```sql and ``` markers if present
         return sql.replace(/```sql\s*/g, '').replace(/```\s*$/g, '').replace(/^```\s*/g, '').replace(/\s*```$/g, '').trim();
     };
 
@@ -607,87 +585,12 @@ ${formatQueryResults(executionResponse.data)}
             }}>
                 {/* Sidebar - For desktop */}
                 {!isMobile && (
-                    <Box
-                        sx={{
-                            width: sidebarWidth,
-                            height: '100%',
-                            position: 'fixed',
-                            left: 0,
-                            top: 64,
-                            bottom: 0,
-                            bgcolor: alpha(theme.palette.background.paper, 0.97),
-                            backdropFilter: 'blur(4px)',
-                            borderRight: '1px solid',
-                            borderColor: alpha(theme.palette.divider, 0.7),
-                            display: 'flex',
-                            flexDirection: 'column',
-                            zIndex: 100,
-                            boxShadow: '0 0 20px rgba(0,0,0,0.1)',
-                            overflowY: 'auto',
-                            overflowX: 'hidden'
-                        }}
-                    >
-                        <Box sx={{ 
-                            p: 2, 
-                            borderBottom: '1px solid', 
-                            borderColor: 'divider',
-                            backgroundImage: 'linear-gradient(rgba(30, 36, 50, 0.5), rgba(21, 26, 37, 0.8))',
-                        }}>
-                            <Typography variant="h6" sx={{ 
-                                fontWeight: 600,
-                                background: 'linear-gradient(45deg, #6596EB, #BB86FC)',
-                                WebkitBackgroundClip: 'text',
-                                WebkitTextFillColor: 'transparent',
-                            }}>
-                                LLM Query System
-                            </Typography>
-                            <Typography 
-                                variant="caption" 
-                                sx={{ 
-                                    color: 'text.secondary',
-                                    display: 'block',
-                                    whiteSpace: 'nowrap',
-                                    overflow: 'hidden',
-                                    textOverflow: 'ellipsis'
-                                }}
-                            >
-                                {currentSession?.title}
-                            </Typography>
-                        </Box>
-                        <Box sx={{ p: 2, flexGrow: 1, overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
-                            <SessionSelector 
-                                currentSessionId={currentSessionId}
-                                onSessionSelect={loadSession}
-                                fullHeight={true}
-                            />
-                        </Box>
-                        <Box sx={{ 
-                            p: 2, 
-                            borderTop: '1px solid', 
-                            borderColor: 'divider',
-                            backgroundImage: 'linear-gradient(rgba(21, 26, 37, 0.8), rgba(30, 36, 50, 0.5))',
-                        }}>
-                            <Button 
-                                fullWidth 
-                                variant="outlined" 
-                                color="primary" 
-                                onClick={() => navigate('/logout')}
-                                startIcon={<LogoutIcon />}
-                                sx={{
-                                    borderRadius: '8px',
-                                    py: 1,
-                                    borderWidth: '1.5px',
-                                    '&:hover': {
-                                        borderWidth: '1.5px',
-                                        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
-                                        transform: 'translateY(-2px)',
-                                    }
-                                }}
-                            >
-                                Logout
-                            </Button>
-                        </Box>
-                    </Box>
+                    <Sidebar
+                        sidebarWidth={sidebarWidth}
+                        currentSessionId={currentSessionId}
+                        loadSession={loadSession}
+                        currentSession={currentSession}
+                    />
                 )}
 
                 {/* Main content area */}
@@ -703,644 +606,43 @@ ${formatQueryResults(executionResponse.data)}
                         overflow: 'hidden'
                     }}
                 >
-                    {/* Mobile header */}
+                    {/* Mobile header and drawer */}
                     {isMobile && (
-                        <AppBar position="static" elevation={0} sx={{ 
-                            zIndex: 1000,
-                            backgroundImage: 'linear-gradient(rgba(30, 36, 50, 0.97), rgba(21, 26, 37, 0.95))',
-                            boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
-                        }}>
-                            <Toolbar>
-                                <IconButton
-                                    color="inherit"
-                                    edge="start"
-                                    onClick={() => setDrawerOpen(true)}
-                                    sx={{ mr: 2 }}
-                                >
-                                    <MenuIcon />
-                                </IconButton>
-                                <Typography variant="h6" component="div" sx={{ 
-                                    flexGrow: 1,
-                                    fontWeight: 600,
-                                    background: 'linear-gradient(45deg, #6596EB, #BB86FC)',
-                                    WebkitBackgroundClip: 'text',
-                                    WebkitTextFillColor: 'transparent', 
-                                }}>
-                                    LLM Query System
-                                    {currentSession && (
-                                        <Chip 
-                                            label={currentSession.title}
-                                            size="small"
-                                            sx={{ 
-                                                ml: 2, 
-                                                color: 'white', 
-                                                borderColor: alpha(theme.palette.primary.main, 0.5),
-                                                backgroundColor: alpha(theme.palette.background.paper, 0.2),
-                                                backdropFilter: 'blur(4px)',
-                                                fontWeight: 500,
-                                            }}
-                                            variant="outlined"
-                                        />
-                                    )}
-                                </Typography>
-                                <IconButton 
-                                    color="inherit" 
-                                    onClick={() => navigate('/logout')}
-                                    sx={{
-                                        color: theme.palette.primary.light,
-                                        '&:hover': {
-                                            backgroundColor: alpha(theme.palette.primary.main, 0.1),
-                                        }
-                                    }}
-                                >
-                                    <LogoutIcon />
-                                </IconButton>
-                            </Toolbar>
-                        </AppBar>
-                    )}
-                    
-                    {/* Mobile drawer */}
-                    {isMobile && (
-                        <Drawer
-                            anchor="left"
-                            open={drawerOpen}
-                            onClose={() => setDrawerOpen(false)}
-                            sx={{
-                                '& .MuiDrawer-paper': { 
-                                    width: sidebarWidth,
-                                    bgcolor: alpha(theme.palette.background.paper, 0.98),
-                                    backdropFilter: 'blur(8px)',
-                                    color: theme.palette.text.primary,
-                                    borderRight: '1px solid',
-                                    borderColor: alpha(theme.palette.divider, 0.5),
-                                    boxShadow: '0 0 20px rgba(0,0,0,0.2)'
-                                },
-                            }}
-                        >
-                            <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
-                                <Box sx={{ 
-                                    p: 2, 
-                                    borderBottom: '1px solid', 
-                                    borderColor: 'divider',
-                                    backgroundImage: 'linear-gradient(rgba(30, 36, 50, 0.5), rgba(21, 26, 37, 0.8))',
-                                }}>
-                                    <Typography variant="h6" sx={{ 
-                                        fontWeight: 600,
-                                        background: 'linear-gradient(45deg, #6596EB, #BB86FC)',
-                                        WebkitBackgroundClip: 'text',
-                                        WebkitTextFillColor: 'transparent',
-                                    }}>
-                                        LLM Query System
-                                    </Typography>
-                                </Box>
-                                <Box sx={{ p: 2, flexGrow: 1, overflow: 'auto' }}>
-                                    <SessionSelector 
-                                        currentSessionId={currentSessionId}
-                                        onSessionSelect={loadSession}
-                                        fullHeight={true}
-                                    />
-                                </Box>
-                                <Box sx={{ 
-                                    p: 2, 
-                                    borderTop: '1px solid', 
-                                    borderColor: 'divider',
-                                    backgroundImage: 'linear-gradient(rgba(21, 26, 37, 0.8), rgba(30, 36, 50, 0.5))',
-                                }}>
-                                    <Button 
-                                        fullWidth 
-                                        variant="outlined" 
-                                        color="primary" 
-                                        onClick={() => navigate('/logout')}
-                                        startIcon={<LogoutIcon />}
-                                        sx={{
-                                            borderRadius: '8px',
-                                            py: 1,
-                                            borderWidth: '1.5px',
-                                            '&:hover': {
-                                                borderWidth: '1.5px',
-                                                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
-                                                transform: 'translateY(-2px)',
-                                            }
-                                        }}
-                                    >
-                                        Logout
-                                    </Button>
-                                </Box>
-                            </Box>
-                        </Drawer>
+                        <MobileHeader
+                            currentSession={currentSession}
+                            drawerOpen={drawerOpen}
+                            setDrawerOpen={setDrawerOpen}
+                            sidebarWidth={sidebarWidth}
+                            currentSessionId={currentSessionId}
+                            loadSession={loadSession}
+                        />
                     )}
                     
                     {/* Messages area */}
-                    <Box 
+                    <SessionMessages
                         ref={messagesContainerRef}
-                        sx={{ 
-                            flexGrow: 1, 
-                            overflowY: 'auto', 
-                            overflowX: 'hidden',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            width: '100%',
-                            pb: '90px', // Space for the input box
-                            px: { xs: 2, md: 4 },
-                            scrollbarWidth: 'thin',
-                            scrollbarColor: `${alpha(theme.palette.primary.main, 0.2)} transparent`,
-                            '&::-webkit-scrollbar': {
-                                width: '8px',
-                            },
-                            '&::-webkit-scrollbar-track': {
-                                background: 'transparent',
-                            },
-                            '&::-webkit-scrollbar-thumb': {
-                                background: alpha(theme.palette.primary.main, 0.2),
-                                borderRadius: '4px',
-                            },
-                            '&::-webkit-scrollbar-thumb:hover': {
-                                background: alpha(theme.palette.primary.main, 0.4),
-                            },
-                        }}
-                    >
-                        {/* SQL Controls - Show when SQL is generated but not yet executed */}
-                        {showSqlControls && (
-                            <Fade in={showSqlControls} timeout={300}>
-                                <Paper 
-                                    elevation={3}
-                                    sx={{
-                                        p: 3,
-                                        mt: 2,
-                                        mb: 3,
-                                        borderRadius: 2,
-                                        border: '1px solid',
-                                        borderColor: alpha(theme.palette.primary.main, 0.2),
-                                        bgcolor: alpha(theme.palette.background.paper, 0.8),
-                                        backdropFilter: 'blur(10px)',
-                                        position: 'sticky',
-                                        top: 10,
-                                        zIndex: 10,
-                                        boxShadow: `0 4px 20px ${alpha(theme.palette.common.black, 0.15)}`
-                                    }}
-                                >
-                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                                        <Typography variant="h6" fontWeight={600} sx={{
-                                            color: theme.palette.text.primary,
-                                        }}>
-                                            Generated SQL Query
-                                        </Typography>
-                                        <IconButton 
-                                            size="small" 
-                                            onClick={() => copyToClipboard(generatedSql)}
-                                            title="Copy SQL to clipboard"
-                                            sx={{ 
-                                                color: theme.palette.primary.main,
-                                                '&:hover': {
-                                                    backgroundColor: alpha(theme.palette.primary.main, 0.1),
-                                                }
-                                            }}
-                                        >
-                                            <Box component="svg" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="18" height="18">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                                            </Box>
-                                        </IconButton>
-                                    </Box>
-                                    
-                                    <Paper 
-                                        elevation={0}
-                                        sx={{
-                                            p: 2,
-                                            mb: 3,
-                                            borderRadius: 1,
-                                            bgcolor: alpha(theme.palette.background.default, 0.7),
-                                            border: '1px solid',
-                                            borderColor: alpha(theme.palette.divider, 0.6),
-                                            overflow: 'auto',
-                                            maxHeight: '200px',
-                                            fontFamily: 'monospace',
-                                            fontSize: '0.9rem',
-                                            whiteSpace: 'pre-wrap',
-                                            wordBreak: 'break-word'
-                                        }}
-                                    >
-                                        {generatedSql}
-                                    </Paper>
-                                    
-                                    <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
-                                        <Button 
-                                            variant="outlined" 
-                                            color="error"
-                                            onClick={discardGeneratedSql}
-                                            sx={{
-                                                borderRadius: '8px',
-                                                fontWeight: 500,
-                                                px: 3
-                                            }}
-                                        >
-                                            Discard
-                                        </Button>
-                                        <Button 
-                                            variant="contained" 
-                                            color="primary"
-                                            onClick={executeGeneratedSql}
-                                            sx={{
-                                                borderRadius: '8px',
-                                                fontWeight: 500,
-                                                px: 3,
-                                                background: 'linear-gradient(45deg, #5581D9 10%, #6596EB 90%)',
-                                                boxShadow: '0 2px 10px rgba(101, 150, 235, 0.3)',
-                                                '&:hover': {
-                                                    background: 'linear-gradient(45deg, #4B74C7 10%, #5889DB 90%)',
-                                                    boxShadow: '0 4px 15px rgba(101, 150, 235, 0.4)',
-                                                }
-                                            }}
-                                        >
-                                            Execute Query
-                                        </Button>
-                                    </Box>
-                                </Paper>
-                            </Fade>
-                        )}
-
-                        {!currentSession?.queries || currentSession.queries.length === 0 ? (
-                            <Box sx={{
-                                display: 'flex',
-                                flexDirection: 'column',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                height: '100%',
-                                opacity: 0.8
-                            }}>
-                                <Typography variant="h5" sx={{ 
-                                    color: alpha(theme.palette.text.secondary, 0.8), 
-                                    fontWeight: 300,
-                                    textAlign: 'center',
-                                    mb: 2,
-                                }}>
-                                    Start a new conversation
-                                </Typography>
-                                <Typography variant="body1" sx={{ 
-                                    color: alpha(theme.palette.text.secondary, 0.7), 
-                                    mt: 1,
-                                    textAlign: 'center',
-                                    maxWidth: '450px'
-                                }}>
-                                    Ask questions about your database using natural language
-                                </Typography>
-                                <Box sx={{ 
-                                    mt: 5, 
-                                    p: 3, 
-                                    borderRadius: 2, 
-                                    bgcolor: alpha(theme.palette.background.paper, 0.4),
-                                    maxWidth: '80%',
-                                    border: '1px dashed',
-                                    borderColor: alpha(theme.palette.divider, 0.6)
-                                }}>
-                                    <Typography variant="body2" fontWeight={500} sx={{ color: theme.palette.text.secondary }}>
-                                        Example questions:
-                                    </Typography>
-                                    <Typography variant="body2" sx={{ mt: 1, color: theme.palette.primary.light }}>
-                                        • Show me all users who joined in the last 30 days
-                                    </Typography>
-                                    <Typography variant="body2" sx={{ mt: 1, color: theme.palette.primary.light }}>
-                                        • What are the top 5 products by revenue?
-                                    </Typography>
-                                    <Typography variant="body2" sx={{ mt: 1, color: theme.palette.primary.light }}>
-                                        • Find orders with items that cost more than $100
-                                    </Typography>
-                                </Box>
-                            </Box>
-                        ) : (
-                            currentSession.queries.map((item, index) => {
-                                const { previewText, rowCount, hasError } = generateResultsSummary(item.response);
-                                return (
-                                    <Fade in={true} key={index} timeout={300} style={{ transitionDelay: `${index * 50}ms` }}>
-                                        <Box sx={{ width: '100%', my: 2 }}>
-                                            {/* User message */}
-                                            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1.5, alignItems: 'flex-start' }}>
-                                                <Box sx={{ maxWidth: { xs: '80%', md: '70%' } }}>
-                                                    <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 0.5, mr: 1 }}>
-                                                        <Typography variant="caption" sx={{ color: alpha(theme.palette.text.secondary, 0.8) }}>
-                                                            You
-                                                        </Typography>
-                                                    </Box>
-                                                    <Paper 
-                                                        elevation={0}
-                                                        sx={{
-                                                            p: 2,
-                                                            color: 'white',
-                                                            backgroundImage: 'linear-gradient(45deg, #4776D0 10%, #6596EB 60%, #7EABFF 95%)',
-                                                            borderRadius: '16px 16px 4px 16px',
-                                                            boxShadow: '0 2px 15px rgba(101, 150, 235, 0.4)',
-                                                            overflowWrap: 'break-word',
-                                                            wordBreak: 'break-word',
-                                                            animation: 'fadeIn 0.5s ease-out',
-                                                            '@keyframes fadeIn': {
-                                                                '0%': {
-                                                                    opacity: 0,
-                                                                    transform: 'translateY(10px)'
-                                                                },
-                                                                '100%': {
-                                                                    opacity: 1,
-                                                                    transform: 'translateY(0)'
-                                                                }
-                                                            },
-                                                            transition: 'transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
-                                                            '&:hover': {
-                                                                transform: 'translateY(-2px)',
-                                                                boxShadow: '0 4px 20px rgba(101, 150, 235, 0.5)',
-                                                            }
-                                                        }}
-                                                    >
-                                                        <Typography variant="body1">{item.prompt}</Typography>
-                                                    </Paper>
-                                                </Box>
-                                                <Avatar 
-                                                    sx={{ 
-                                                        ml: 1, 
-                                                        bgcolor: theme.palette.primary.dark,
-                                                        boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
-                                                        animation: 'pulseAvatar 0.5s ease-out',
-                                                        '@keyframes pulseAvatar': {
-                                                            '0%': {
-                                                                transform: 'scale(0.8)',
-                                                                opacity: 0
-                                                            },
-                                                            '100%': {
-                                                                transform: 'scale(1)',
-                                                                opacity: 1
-                                                            }
-                                                        }
-                                                    }} 
-                                                    alt="User"
-                                                >
-                                                    <PersonIcon />
-                                                </Avatar>
-                                            </Box>
-                                            
-                                            {/* System message */}
-                                            <Box sx={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'flex-start' }}>
-                                                <Avatar 
-                                                    sx={{ 
-                                                        mr: 1, 
-                                                        bgcolor: theme.palette.secondary.dark,
-                                                        boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
-                                                    }} 
-                                                    alt="AI"
-                                                >
-                                                    <SmartToyIcon />
-                                                </Avatar>
-                                                <Box sx={{ maxWidth: { xs: '85%', md: '75%' } }}>
-                                                    <Box sx={{ display: 'flex', mb: 0.5, ml: 1 }}>
-                                                        <Typography variant="caption" sx={{ color: alpha(theme.palette.text.secondary, 0.8) }}>
-                                                            AI Assistant
-                                                        </Typography>
-                                                    </Box>
-                                                    <Paper 
-                                                        elevation={0}
-                                                        sx={{
-                                                            p: 2,
-                                                            color: theme.palette.text.primary,
-                                                            backgroundImage: 'linear-gradient(135deg, rgba(100, 95, 190, 0.05) 0%, rgba(80, 110, 200, 0.15) 100%)',
-                                                            backdropFilter: 'blur(10px)',
-                                                            borderRadius: '16px 16px 16px 4px',
-                                                            border: '1px solid',
-                                                            borderColor: alpha(theme.palette.divider, 0.4),
-                                                            overflowWrap: 'break-word',
-                                                            wordWrap: 'break-word',
-                                                            boxShadow: '0 2px 12px rgba(0,0,0,0.1)',
-                                                            cursor: 'pointer',
-                                                            transition: 'all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)',
-                                                            '&:hover': {
-                                                                backgroundImage: 'linear-gradient(135deg, rgba(100, 95, 190, 0.1) 0%, rgba(80, 110, 200, 0.2) 100%)',
-                                                                boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
-                                                                transform: 'translateY(-2px)',
-                                                                borderColor: alpha(theme.palette.primary.main, 0.2),
-                                                            }
-                                                        }}
-                                                    >
-                                                        <Typography 
-                                                            variant="body1" 
-                                                            sx={{ 
-                                                                whiteSpace: 'pre-wrap',
-                                                                animation: 'fadeInSlide 0.4s ease-out',
-                                                                '@keyframes fadeInSlide': {
-                                                                    '0%': {
-                                                                        opacity: 0,
-                                                                        transform: 'translateY(10px)'
-                                                                    },
-                                                                    '100%': {
-                                                                        opacity: 1,
-                                                                        transform: 'translateY(0)'
-                                                                    }
-                                                                },
-                                                                '& code': {
-                                                                    backgroundColor: alpha(theme.palette.background.default, 0.5),
-                                                                    fontFamily: 'monospace',
-                                                                    p: 0.5,
-                                                                    borderRadius: 1,
-                                                                },
-                                                                '& table': {
-                                                                    borderCollapse: 'collapse',
-                                                                    width: '100%',
-                                                                    my: 1.5,
-                                                                    overflowX: 'auto',
-                                                                    display: 'block',
-                                                                },
-                                                                '& th': {
-                                                                    borderBottom: `1px solid ${alpha(theme.palette.divider, 0.8)}`,
-                                                                    p: 1,
-                                                                    textAlign: 'left',
-                                                                    fontWeight: 500,
-                                                                    color: theme.palette.primary.light,
-                                                                    backgroundColor: alpha(theme.palette.background.default, 0.5),
-                                                                },
-                                                                '& td': {
-                                                                    p: 1,
-                                                                    borderBottom: `1px solid ${alpha(theme.palette.divider, 0.3)}`,
-                                                                }
-                                                            }}
-                                                        >
-                                                            {previewText}
-                                                        </Typography>
-                                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1.5 }}>
-                                                            <Typography 
-                                                                variant="caption" 
-                                                                sx={{ 
-                                                                    color: alpha(theme.palette.text.secondary, 0.6)
-                                                                }}
-                                                            >
-                                                                {new Date(item.created_at).toLocaleString()}
-                                                            </Typography>
-                                                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                                                <Button 
-                                                                    size="small" 
-                                                                    variant="outlined" 
-                                                                    color="primary" 
-                                                                    onClick={() => showPreviousQueryResults(item)}
-                                                                    startIcon={<VisibilityIcon />}
-                                                                    sx={{
-                                                                        borderRadius: '8px',
-                                                                        fontWeight: 500,
-                                                                        px: 2,
-                                                                        py: 0.5,
-                                                                        ml: 2,
-                                                                        borderWidth: '1.5px',
-                                                                        '&:hover': {
-                                                                            borderWidth: '1.5px',
-                                                                            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
-                                                                            transform: 'translateY(-2px)',
-                                                                        }
-                                                                    }}
-                                                                >
-                                                                    View Details
-                                                                </Button>
-                                                                <IconButton 
-                                                                    size="small" 
-                                                                    color="error" 
-                                                                    onClick={() => handleDeleteQuery(item.id)}
-                                                                    sx={{ ml: 1 }}
-                                                                >
-                                                                    <DeleteIcon />
-                                                                </IconButton>
-                                                            </Box>
-                                                        </Box>
-                                                    </Paper>
-                                                </Box>
-                                            </Box>
-                                        </Box>
-                                    </Fade>
-                                );
-                            })
-                        )}
-                        <div ref={messagesEndRef} />
-                    </Box>
+                        currentSession={currentSession}
+                        messagesEndRef={messagesEndRef}
+                        showSqlControls={showSqlControls}
+                        generatedSql={generatedSql}
+                        copyToClipboard={copyToClipboard}
+                        discardGeneratedSql={discardGeneratedSql}
+                        executeGeneratedSql={executeGeneratedSql}
+                        generateResultsSummary={generateResultsSummary}
+                        showPreviousQueryResults={showPreviousQueryResults}
+                        handleDeleteQuery={handleDeleteQuery}
+                    />
                     
-                    {/* Query input - updated with glass morphism design */}
-                    <Box 
-                        component="footer"
-                        sx={{
-                            position: 'fixed',
-                            bottom: 0,
-                            left: isMobile ? 0 : sidebarWidth,
-                            right: 0,
-                            width: isMobile ? '100%' : `calc(100% - ${sidebarWidth}px)`, 
-                            backgroundImage: 'linear-gradient(rgba(21, 26, 37, 0.6), rgba(30, 36, 50, 0.8))',
-                            backdropFilter: 'blur(10px)',
-                            borderTop: '1px solid',
-                            borderColor: alpha(theme.palette.divider, 0.3),
-                            zIndex: 50,
-                            display: 'flex',
-                            justifyContent: 'center',
-                            p: 2
-                        }}
-                    >
-                        <form onSubmit={handleSubmit} style={{ width: '90%', maxWidth: '800px' }}>
-                            <Box sx={{ 
-                                display: 'flex',
-                                position: 'relative',
-                            }}>
-                                <TextField
-                                    fullWidth
-                                    placeholder="Type your message here..."
-                                    variant="outlined"
-                                    value={query}
-                                    onChange={(e) => setQuery(e.target.value)}
-                                    multiline
-                                    minRows={1}
-                                    maxRows={3}
-                                    onKeyDown={(e) => {
-                                        // Handle Enter key press (without shift) to submit the form
-                                        if (e.key === 'Enter' && !e.shiftKey) {
-                                            e.preventDefault(); // Prevent default to avoid new line
-                                            // Only submit if there's content and we have a session
-                                            if (query.trim() && currentSessionId && !loading) {
-                                                handleSubmit(e);
-                                            }
-                                        }
-                                    }}
-                                    InputProps={{
-                                        endAdornment: (
-                                            <InputAdornment position="end">
-                                                <Button
-                                                    variant="contained"
-                                                    color="primary"
-                                                    type="submit"
-                                                    disabled={loading || !query.trim() || !currentSessionId}
-                                                    sx={{
-                                                        minWidth: 'auto',
-                                                        width: 42,
-                                                        height: 42,
-                                                        borderRadius: '50%',
-                                                        mr: 1,
-                                                        boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
-                                                        background: 'linear-gradient(45deg, #5581D9 10%, #6596EB 90%)',
-                                                        '&:hover': {
-                                                            background: 'linear-gradient(45deg, #4B74C7 10%, #5889DB 90%)',
-                                                            transform: 'translateY(-2px)',
-                                                            boxShadow: '0 4px 12px rgba(0,0,0,0.25)',
-                                                        },
-                                                        transition: 'all 0.2s ease-in-out',
-                                                    }}
-                                                >
-                                                    <SendIcon />
-                                                </Button>
-                                            </InputAdornment>
-                                        ),
-                                        sx: {
-                                            pr: 0,
-                                            transition: 'all 0.2s ease-in-out'
-                                        }
-                                    }}
-                                    sx={{
-                                        flexGrow: 1,
-                                        '& .MuiOutlinedInput-root': {
-                                            borderRadius: '28px',
-                                            bgcolor: alpha(theme.palette.background.paper, 0.3),
-                                            backdropFilter: 'blur(10px)',
-                                            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                                            transition: 'all 0.2s ease-in-out',
-                                            '& fieldset': {
-                                                borderColor: alpha(theme.palette.divider, 0.5),
-                                                transition: 'border-color 0.2s ease-in-out',
-                                            },
-                                            '&:hover fieldset': {
-                                                borderColor: alpha(theme.palette.primary.main, 0.7),
-                                            },
-                                            '&.Mui-focused fieldset': {
-                                                borderColor: theme.palette.primary.main,
-                                                borderWidth: '2px',
-                                            },
-                                            '&.Mui-focused': {
-                                                boxShadow: `0 0 0 3px ${alpha(theme.palette.primary.main, 0.2)}`,
-                                            }
-                                        }
-                                    }}
-                                />
-                            </Box>
-                        </form>
-                        
-                        {loading && (
-                            <Fade in={loading}>
-                                <Box sx={{ 
-                                    position: 'absolute', 
-                                    top: -48, 
-                                    left: '50%', 
-                                    transform: 'translateX(-50%)',
-                                    bgcolor: alpha(theme.palette.background.paper, 0.85),
-                                    backdropFilter: 'blur(10px)',
-                                    borderRadius: '12px',
-                                    py: 1,
-                                    px: 2,
-                                    boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    zIndex: 1000
-                                }}>
-                                    <LoadingIndicator size={20} />
-                                    <Typography variant="body2" fontWeight={500} sx={{ ml: 1.5, color: theme.palette.text.secondary }}>
-                                        Processing your query...
-                                    </Typography>
-                                </Box>
-                            </Fade>
-                        )}
-                    </Box>
+                    {/* Query input component */}
+                    <QueryInput
+                        query={query}
+                        setQuery={setQuery}
+                        loading={loading}
+                        currentSessionId={currentSessionId}
+                        handleSubmit={handleSubmit}
+                        isMobile={isMobile}
+                        sidebarWidth={sidebarWidth}
+                    />
                 </Box>
             </Box>
             

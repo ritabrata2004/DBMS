@@ -58,7 +58,7 @@ api.updateColumnMetadata = (columnId, metadata) =>
 
 // Database metadata functions
 api.getSessionsByDatabase = (databaseId) =>
-  api.get(`/api/sessions/?database=${databaseId}`);
+  api.get(`/api/sessions/?database_id=${databaseId}`);
 api.generateMetadataDescription = (databaseId, type, id) =>
   api.post(`/api/databases/databases/${databaseId}/generate_description/`, {
     type,

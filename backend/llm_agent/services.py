@@ -269,7 +269,6 @@ def nl_to_sql(natural_language_query, database_id, user=None):
     try:
         # Get the database to ensure it exists
         from databases.models import ClientDatabase
-        print("Running nl_to_sql")
         try:
             database = ClientDatabase.objects.get(id=database_id)
         except ClientDatabase.DoesNotExist:
