@@ -82,4 +82,13 @@ api.executeSqlQuery = (databaseId, sqlQuery) =>
 api.getERDiagram = (databaseId) =>
   api.get(`/api/databases/databases/${databaseId}/er_diagram/`);
 
+// Token Usage
+api.getTokenUsage = (days, limit) => {
+  let url = '/api/user/token-usage/';
+  const params = {};
+  if (days) params.days = days;
+  if (limit) params.limit = limit;
+  return api.get(url, { params });
+};
+
 export default api;
