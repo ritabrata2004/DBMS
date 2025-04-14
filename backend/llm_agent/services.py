@@ -257,10 +257,16 @@ Given the following database schema:
 {schema_summary}
 ```
 
-Here are some examples of natural language questions converted to SQL queries:
+"""
+        
+        # Only include the RAG examples section if there are actually examples
+        if rag_examples:
+            prompt += f"""Here are some examples of natural language questions converted to SQL queries:
 {rag_examples}
 
-Convert this natural language question to a valid SQL query:
+"""
+
+        prompt += f"""Convert this natural language question to a valid SQL query:
 "{natural_language_query}"
 
 Return your answer as a JSON object with the following format:
