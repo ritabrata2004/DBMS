@@ -11,4 +11,6 @@ urlpatterns = [
     path('request-password-change/', views.RequestPasswordChangeView.as_view(), name='request-password-change'),
     path('verify-otp/', views.VerifyOTPView.as_view(), name='verify-otp'),
     path('set-new-password/', views.SetNewPasswordView.as_view(), name='set-new-password'),
+    # Token usage endpoint
+    path('token-usage/', views.TokenUsageView.as_view(), name='token-usage'),
 ]

@@ -6,11 +6,15 @@ import requests
 from django.conf import settings
 from databases.models import TableMetadata, ColumnMetadata
 from dotenv import load_dotenv
+from django.contrib.auth.models import User
+from user.models import UserTokenUsage
 
 # load environment variables from .env file
 load_dotenv()
 
-def llm_api(prompt, model="gpt-4o-mini", temperature=0.7, max_tokens=1000):
+input_factor = 10
+
+def llm_api(prompt, model="gpt-4o-mini", temperature=0.7, max_tokens=1000, user=None):
     """
     A unified function to interact with either OpenAI or Groq API based on the model name.
     
@@ -19,6 +23,7 @@ def llm_api(prompt, model="gpt-4o-mini", temperature=0.7, max_tokens=1000):
         model (str): The model to use, default is gpt-4o-mini
         temperature (float): Controls randomness (0-1), default is 0.7
         max_tokens (int): Maximum number of tokens to generate, default is 1000
+        user (User, optional): Django user to track token usage, default is None
         
     Returns:
         dict: The response with success status and content/error
@@ -57,9 +62,27 @@ def llm_api(prompt, model="gpt-4o-mini", temperature=0.7, max_tokens=1000):
             
             # Extract the content from the response
             content = response.choices[0].message.content
+            
+            # Record token usage if user is provided
+            if user and response.usage:
+                UserTokenUsage.record_token_usage(
+                    user=user,
+                    prompt_tokens=response.usage.prompt_tokens,
+                    completion_tokens=response.usage.completion_tokens,
+                    model=model,
+                    query_text=prompt[:500]  # Store first 500 chars of the prompt
+                )
+                logging.info(f"Recorded token usage for {user.username}: {response.usage.prompt_tokens} prompt, {response.usage.completion_tokens} completion")
+            
             return {
                 "success": True,
-                "content": content
+                "content": content,
+                "token_usage": {
+                    "prompt_tokens": response.usage.prompt_tokens/input_factor if response.usage else 0,
+                    "completion_tokens": response.usage.completion_tokens if response.usage else 0,
+                    "total_tokens": response.usage.total_tokens if response.usage else 0,
+                    "model": model
+                }
             }
         else:
             # Use Groq API
@@ -100,9 +123,31 @@ def llm_api(prompt, model="gpt-4o-mini", temperature=0.7, max_tokens=1000):
                 
                 # Extract the content from the response
                 content = result["choices"][0]["message"]["content"]
+                
+                # Record token usage if user is provided and usage info is available
+                if user and "usage" in result:
+                    usage = result["usage"]
+                    UserTokenUsage.record_token_usage(
+                        user=user,
+                        prompt_tokens=usage.get("prompt_tokens", 0)/input_factor,
+                        completion_tokens=usage.get("completion_tokens", 0),
+                        model=model,
+                        query_text=prompt[:500]  # Store first 500 chars of the prompt
+                    )
+                    logging.info(f"Recorded token usage for {user.username}: {usage.get("prompt_tokens", 0)} prompt, {usage.get("completion_tokens", 0)} completion")
+                
+                # Extract token usage for return value
+                token_usage = {
+                    "prompt_tokens": result.get("usage", {}).get("prompt_tokens", 0),
+                    "completion_tokens": result.get("usage", {}).get("completion_tokens", 0),
+                    "total_tokens": result.get("usage", {}).get("total_tokens", 0),
+                    "model": model
+                }
+                
                 return {
                     "success": True,
-                    "content": content
+                    "content": content,
+                    "token_usage": token_usage
                 }
             except requests.exceptions.RequestException as e:
                 logging.error(f"Error calling Groq API: {str(e)}")
@@ -112,9 +157,7 @@ def llm_api(prompt, model="gpt-4o-mini", temperature=0.7, max_tokens=1000):
         logging.exception(f"Unexpected error in llm_api: {str(e)}")
         return {"success": False, "error": f"Unexpected error: {str(e)}"}
 
-
-
-def get_metadata_description(metadata_type, name, sample_data=None):
+def get_metadata_description(metadata_type, name, sample_data=None, user=None):
     """
     Generate natural language descriptions for database metadata.
     
@@ -122,6 +165,7 @@ def get_metadata_description(metadata_type, name, sample_data=None):
         metadata_type (str): Type of metadata ('table', 'column', 'relationship')
         name (str): Name of the database object
         sample_data (dict, optional): Sample data or additional context
+        user (User, optional): Django user to track token usage, default is None
         
     Returns:
         str: Generated description
@@ -203,12 +247,13 @@ def get_metadata_description(metadata_type, name, sample_data=None):
     # Request a concise professional description
     prompt += "\n\nGenerate a single paragraph, professional description that would be helpful for a database user to understand this item's purpose and content."
     
-    result = llm_api(prompt)
+    # Pass the user parameter to track token usage
+    result = llm_api(prompt, user=user)
     if result.get("success"):
         return result.get("content", "")
     return "Failed to generate description due to API error."
 
-def nl_to_sql(natural_language_query, database_id):
+def nl_to_sql(natural_language_query, database_id, user=None):
     """
     Convert natural language query to SQL based on the provided database ID.
     Uses RAG (Retrieval-Augmented Generation) to enhance SQL generation with in-context learning.
@@ -216,6 +261,7 @@ def nl_to_sql(natural_language_query, database_id):
     Args:
         natural_language_query (str): The natural language question
         database_id (int): Database ID to get schema information
+        user (User, optional): Django user to track token usage, default is None
         
     Returns:
         dict: Generated SQL query and explanation
@@ -223,7 +269,6 @@ def nl_to_sql(natural_language_query, database_id):
     try:
         # Get the database to ensure it exists
         from databases.models import ClientDatabase
-        print("Running nl_to_sql")
         try:
             database = ClientDatabase.objects.get(id=database_id)
         except ClientDatabase.DoesNotExist:
@@ -277,7 +322,8 @@ Return your answer as a JSON object with the following format:
 You must return only the json and nothing else.
 """
         
-        result = llm_api(prompt)
+        # Pass the user to the LLM API call for token tracking
+        result = llm_api(prompt, user=user)
         
         if not result.get("success"):
             return {"success": False, "error": result.get("error")}

@@ -29,7 +29,7 @@ import DatabaseIcon from '@mui/icons-material/Storage';
 import api from '../api';
 import LoadingIndicator from './LoadingIndicator';
 
-function SessionSelector({ currentSessionId, onSessionSelect, fullHeight = false }) {
+function SessionSelector({ currentSessionId, onSessionSelect, fullHeight = false, databaseId = null }) {
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -44,12 +44,19 @@ function SessionSelector({ currentSessionId, onSessionSelect, fullHeight = false
   useEffect(() => {
     fetchSessions();
     loadDatabases(); // Load databases when component mounts
-  }, []);
+  }, [databaseId]);
 
   const fetchSessions = async () => {
     setLoading(true);
     try {
-      const response = await api.getSessions();
+      let response;
+      if (databaseId) {
+        // Filter sessions by database ID if provided
+        response = await api.getSessionsByDatabase(databaseId);
+      } else {
+        // Otherwise, get all sessions
+        response = await api.getSessions();
+      }
       setSessions(response.data);
     } catch (error) {
       console.error('Error fetching sessions:', error);
@@ -345,6 +352,14 @@ function SessionSelector({ currentSessionId, onSessionSelect, fullHeight = false
                 setDatabaseError('');
               }}
               label="Select Database"
+              renderValue={(selected) => {
+                return (
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <DatabaseIcon fontSize="small" sx={{ mr: 1, color: 'secondary.main' }} />
+                    {selectedDatabase ? selectedDatabase.name : ''}
+                  </Box>
+                );
+              }}
             >
               {databases.map((db) => (
                 <MenuItem key={db.id} value={db.id}>

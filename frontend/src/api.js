@@ -58,7 +58,7 @@ api.updateColumnMetadata = (columnId, metadata) =>
 
 // Database metadata functions
 api.getSessionsByDatabase = (databaseId) =>
-  api.get(`/api/sessions/?database=${databaseId}`);
+  api.get(`/api/sessions/?database_id=${databaseId}`);
 api.generateMetadataDescription = (databaseId, type, id) =>
   api.post(`/api/databases/databases/${databaseId}/generate_description/`, {
     type,
@@ -81,5 +81,14 @@ api.executeSqlQuery = (databaseId, sqlQuery) =>
 // ER Diagram
 api.getERDiagram = (databaseId) =>
   api.get(`/api/databases/databases/${databaseId}/er_diagram/`);
+
+// Token Usage
+api.getTokenUsage = (days, limit) => {
+  let url = '/api/user/token-usage/';
+  const params = {};
+  if (days) params.days = days;
+  if (limit) params.limit = limit;
+  return api.get(url, { params });
+};
 
 export default api;

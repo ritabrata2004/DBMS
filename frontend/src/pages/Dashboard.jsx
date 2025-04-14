@@ -80,6 +80,7 @@ const Dashboard = () => {
   const [sessionActivity, setSessionActivity] = useState([]);
   const [queryTypes, setQueryTypes] = useState([]);
   const [executionTimes, setExecutionTimes] = useState([]);
+  const [tokenUsageOverTime, setTokenUsageOverTime] = useState([]); // Tracking token usage over time
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
@@ -166,8 +167,27 @@ const Dashboard = () => {
         { name: '>1s', count: Math.floor(totalQueries * 0.1) }
       ];
       
+      // Get token usage data
+      const tokenUsageResponse = await api.getTokenUsage(7, 50); // last 7 days, up to 50 records
+      let tokenUsage = [];
+      
+      if (tokenUsageResponse && tokenUsageResponse.data && tokenUsageResponse.data.success) {
+        // Format token usage data for the chart
+        tokenUsage = tokenUsageResponse.data.data.map(item => ({
+          id: item.id,
+          datetime: new Date(item.timestamp).toLocaleString(),
+          timestamp: new Date(item.timestamp).getTime(),
+          inputTokens: item.prompt_tokens,
+          outputTokens: item.completion_tokens,
+          totalTokens: item.total_tokens,
+          model: item.model
+        }));
+        
+        // Sort by timestamp (ascending order)
+        tokenUsage.sort((a, b) => a.timestamp - b.timestamp);
+      }
+      
       // Set state with all the gathered data
-      // Hardcode success rate to 100%
       setStats({
         databases,
         sessions: sessions.length,
@@ -178,6 +198,7 @@ const Dashboard = () => {
       setSessionActivity(sessionActivityArray);
       setQueryTypes(queryTypesData);
       setExecutionTimes(executionTimesData);
+      setTokenUsageOverTime(tokenUsage);
       
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
@@ -606,6 +627,117 @@ const Dashboard = () => {
                         </Bar>
                       </BarChart>
                     </ResponsiveContainer>
+                  </MotionPaper>
+                </Grid>
+
+                {/* Token Usage Analysis Chart */}
+                <Grid item xs={12}>
+                  <MotionPaper
+                    variants={itemVariants}
+                    sx={{
+                      p: 3,
+                      borderRadius: '16px',
+                      height: 450,
+                      boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+                      border: '1px solid',
+                      borderColor: 'divider',
+                      mt: 3
+                    }}
+                  >
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
+                      <Box>
+                        <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                          Token Usage Over Time
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          Input vs Output tokens per query
+                        </Typography>
+                      </Box>
+                      <Tooltip title="Shows input and output token usage for each query over time">
+                        <IconButton sx={{ color: theme.palette.primary.main }}>
+                          <InsightsIcon />
+                        </IconButton>
+                      </Tooltip>
+                    </Box>
+                    
+                    {tokenUsageOverTime.length === 0 ? (
+                      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '85%' }}>
+                        <Typography variant="body1" color="text.secondary">
+                          No token usage data available
+                        </Typography>
+                      </Box>
+                    ) : (
+                      <ResponsiveContainer width="100%" height="85%">
+                        <LineChart
+                          data={tokenUsageOverTime}
+                          margin={{ top: 10, right: 30, left: 20, bottom: 30 }}
+                        >
+                          <CartesianGrid strokeDasharray="3 3" vertical={true} horizontal={true} stroke={alpha('#fff', 0.1)} />
+                          <XAxis 
+                            dataKey="datetime"
+                            type="category"
+                            tick={{ fill: theme.palette.text.secondary, angle: -45, textAnchor: 'end' }}
+                            height={60}
+                            interval={0}
+                            axisLine={{ stroke: alpha('#fff', 0.1) }}
+                            tickLine={{ stroke: alpha('#fff', 0.1) }}
+                          />
+                          <YAxis 
+                            yAxisId="left"
+                            tick={{ fill: theme.palette.text.secondary }}
+                            axisLine={{ stroke: alpha('#fff', 0.1) }}
+                            tickLine={{ stroke: alpha('#fff', 0.1) }}
+                            label={{ 
+                              value: 'Token Count', 
+                              angle: -90, 
+                              position: 'insideLeft',
+                              fill: theme.palette.text.secondary
+                            }}
+                          />
+                          <RechartsTooltip
+                            contentStyle={{
+                              backgroundColor: '#1A1A1A',
+                              border: 'none',
+                              borderRadius: '8px',
+                              boxShadow: '0 4px 20px rgba(0,0,0,0.25)'
+                            }}
+                            formatter={(value, name) => {
+                              if (name === 'inputTokens') return [value, 'Input Tokens'];
+                              if (name === 'outputTokens') return [value, 'Output Tokens'];
+                              return [value, name];
+                            }}
+                            labelFormatter={(value) => `Time: ${value}`}
+                          />
+                          <Legend />
+                          <Line
+                            yAxisId="left"
+                            type="monotone"
+                            dataKey="inputTokens"
+                            name="Input Tokens"
+                            stroke={COLORS[0]}
+                            strokeWidth={2}
+                            dot={{ r: 4, strokeWidth: 2, fill: '#1A1A1A' }}
+                            activeDot={{ r: 6, stroke: COLORS[0], fill: '#1A1A1A' }}
+                          />
+                          <Line
+                            yAxisId="left"
+                            type="monotone"
+                            dataKey="outputTokens"
+                            name="Output Tokens"
+                            stroke={COLORS[1]}
+                            strokeWidth={2}
+                            dot={{ r: 4, strokeWidth: 2, fill: '#1A1A1A' }}
+                            activeDot={{ r: 6, stroke: COLORS[1], fill: '#1A1A1A' }}
+                          />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    )}
+                    
+                    <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
+                      <Typography variant="caption" color="text.secondary">
+                        Based on token counts from model metadata or estimated from text length
+                      </Typography>
+                    </Box>
                   </MotionPaper>
                 </Grid>
               </Grid>
