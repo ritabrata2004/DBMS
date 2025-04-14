@@ -55,3 +55,39 @@ class PasswordResetOTP(models.Model):
             except Exception as inner_e:
                 logger.error(f"Critical error generating fallback OTP: {str(inner_e)}")
                 raise
+
+class UserTokenUsage(models.Model):
+    """Tracks token usage for LLM API calls per user"""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='token_usage')
+    prompt_tokens = models.IntegerField(default=0)
+    completion_tokens = models.IntegerField(default=0)
+    total_tokens = models.IntegerField(default=0)
+    model = models.CharField(max_length=50, blank=True)
+    timestamp = models.DateTimeField(auto_now_add=True)
+    query_text = models.TextField(blank=True, null=True)  # Store the query for reference
+    
+    class Meta:
+        ordering = ['-timestamp']
+    
+    def __str__(self):
+        return f"Token usage for {self.user.username} on {self.timestamp.strftime('%Y-%m-%d %H:%M')}"
+    
+    @classmethod
+    def record_token_usage(cls, user, prompt_tokens, completion_tokens, model="", query_text=None):
+        """Record token usage for a user"""
+        try:
+            total_tokens = prompt_tokens + completion_tokens
+            token_usage = cls(
+                user=user,
+                prompt_tokens=prompt_tokens,
+                completion_tokens=completion_tokens,
+                total_tokens=total_tokens,
+                model=model,
+                query_text=query_text
+            )
+            token_usage.save()
+            logger.info(f"Recorded token usage for user {user.username}: {prompt_tokens} prompt, {completion_tokens} completion")
+            return token_usage
+        except Exception as e:
+            logger.error(f"Error recording token usage: {str(e)}")
+            return None

@@ -325,7 +325,8 @@ class DatabaseViewSet(viewsets.ModelViewSet):
             
             # Generate description using LLM
             logging.info(f"Calling get_metadata_description with type={metadata_type}, name={name}")
-            description = get_metadata_description(metadata_type, name, context)
+            # Pass the request.user to track token usage
+            description = get_metadata_description(metadata_type, name, context, user=request.user)
             logging.info(f"Description generated: {description[:100]}...")
             
             return Response({

@@ -6,8 +6,8 @@ from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
-from .serializers import UserSerializer
-from .models import PasswordResetOTP
+from .serializers import UserSerializer, TokenUsageSerializer
+from .models import PasswordResetOTP, UserTokenUsage
 from django.core.mail import send_mail
 from django.conf import settings
 import logging
@@ -262,3 +262,42 @@ class LoginView(APIView):
             'username': user.username,
             'email': user.email
         })
+
+# Token usage endpoint
+class TokenUsageView(APIView):
+    """Get token usage data for the authenticated user"""
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        """Return token usage data for the current user"""
+        try:
+            # Get query parameters for filtering
+            days = request.query_params.get('days', None)
+            limit = int(request.query_params.get('limit', 100))
+            
+            # Base query for current user's token usage
+            queryset = UserTokenUsage.objects.filter(user=request.user)
+            
+            # Apply date filtering if requested
+            if days:
+                from django.utils import timezone
+                import datetime
+                days = int(days)
+                start_date = timezone.now() - datetime.timedelta(days=days)
+                queryset = queryset.filter(timestamp__gte=start_date)
+                
+            # Apply limit and order by timestamp
+            queryset = queryset.order_by('-timestamp')[:limit]
+            
+            serializer = TokenUsageSerializer(queryset, many=True)
+            
+            return Response({
+                'success': True,
+                'data': serializer.data
+            })
+        except Exception as e:
+            logging.exception(f"Error fetching token usage: {str(e)}")
+            return Response({
+                'success': False,
+                'error': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

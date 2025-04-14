@@ -22,7 +22,8 @@ def generate_sql_from_nl(request):
     natural_language_query = request.data['query']
     database_id = request.data['database_id']
     
-    result = nl_to_sql(natural_language_query, database_id)
+    # Pass the request.user to the nl_to_sql function for token tracking
+    result = nl_to_sql(natural_language_query, database_id, user=request.user)
     
     if not result.get('success'):
         return Response(
