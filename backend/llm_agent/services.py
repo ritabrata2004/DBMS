@@ -243,7 +243,7 @@ def nl_to_sql(natural_language_query, database_id):
             }
         
         # Fetch similar examples using RAG to enhance in-context learning
-        rag_examples = get_rag_examples(natural_language_query)
+        rag_examples = "" #get_rag_examples(natural_language_query)
 
         print(f"RAG examples: {rag_examples}")
         

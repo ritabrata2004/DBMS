@@ -59,11 +59,10 @@ api.updateColumnMetadata = (columnId, metadata) =>
 // Database metadata functions
 api.getSessionsByDatabase = (databaseId) =>
   api.get(`/api/sessions/?database=${databaseId}`);
-api.generateMetadataDescription = (type, name, sampleData) =>
-  api.post("/api/llm/generate-description/", {
+api.generateMetadataDescription = (databaseId, type, id) =>
+  api.post(`/api/databases/databases/${databaseId}/generate_description/`, {
     type,
-    name,
-    sample_data: sampleData,
+    id,
   });
 
 // NL to SQL conversion

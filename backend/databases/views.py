@@ -233,6 +233,10 @@ class DatabaseViewSet(viewsets.ModelViewSet):
         """Generate AI description for table or column metadata"""
         database = self.get_object()
         
+        # Add detailed logging
+        import logging
+        logging.info(f"generate_description called with database_id={pk}, data={request.data}")
+        
         # Validate input
         if 'type' not in request.data or 'id' not in request.data:
             return Response({
@@ -242,6 +246,8 @@ class DatabaseViewSet(viewsets.ModelViewSet):
         
         metadata_type = request.data['type']
         metadata_id = request.data['id']
+        
+        logging.info(f"Generating description for {metadata_type} with id {metadata_id}")
         
         try:
             from llm_agent.services import get_metadata_description
@@ -273,6 +279,8 @@ class DatabaseViewSet(viewsets.ModelViewSet):
                     for col in columns[:10]  # Limit to first 10 columns
                 ]
                 
+                logging.info(f"Table context: {context}")
+                
             elif metadata_type == 'column':
                 # Get column metadata
                 column = ColumnMetadata.objects.get(id=metadata_id, table__database=database)
@@ -289,17 +297,26 @@ class DatabaseViewSet(viewsets.ModelViewSet):
                     'foreign_key': column.is_foreign_key,
                 }
                 
-                # Get sample distinct values to provide better context for AI
-                sample_values = connector.get_column_sample_values(
-                    database, 
-                    table.schema_name, 
-                    table.table_name, 
-                    column.column_name, 
-                    limit=10
-                )
+                logging.info(f"Column context before sample values: {context}")
                 
-                if sample_values:
-                    context['sample_values'] = sample_values
+                # Get sample distinct values to provide better context for AI
+                try:
+                    sample_values = connector.get_column_sample_values(
+                        database, 
+                        table.schema_name, 
+                        table.table_name, 
+                        column.column_name, 
+                        limit=10
+                    )
+                    
+                    if sample_values:
+                        context['sample_values'] = sample_values
+                        logging.info(f"Sample values retrieved: {sample_values[:5]}...")
+                    else:
+                        logging.warning("No sample values retrieved")
+                except Exception as sample_err:
+                    logging.error(f"Error retrieving sample values: {str(sample_err)}")
+                    # Continue without sample values
             else:
                 return Response({
                     'success': False,
@@ -307,7 +324,9 @@ class DatabaseViewSet(viewsets.ModelViewSet):
                 }, status=400)
             
             # Generate description using LLM
+            logging.info(f"Calling get_metadata_description with type={metadata_type}, name={name}")
             description = get_metadata_description(metadata_type, name, context)
+            logging.info(f"Description generated: {description[:100]}...")
             
             return Response({
                 'success': True,
@@ -315,16 +334,18 @@ class DatabaseViewSet(viewsets.ModelViewSet):
                 'context': context  # Include context data in response
             })
             
-        except (TableMetadata.DoesNotExist, ColumnMetadata.DoesNotExist):
+        except (TableMetadata.DoesNotExist, ColumnMetadata.DoesNotExist) as e:
+            logging.error(f"Metadata not found: {str(e)}")
             return Response({
                 'success': False,
                 'message': f'{metadata_type} with id {metadata_id} not found'
             }, status=404)
             
         except Exception as e:
+            logging.exception(f"Error in generate_description: {str(e)}")
             return Response({
                 'success': False,
-                'message': str(e)
+                'message': f"Error generating description: {str(e)}"
             }, status=500)
     
     @action(detail=True, methods=['get'])

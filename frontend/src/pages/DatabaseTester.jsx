@@ -422,17 +422,12 @@ const DatabaseTester = () => {
   };
 
   // Handle AI description generation
-  const handleGenerateAIDescription = async (type, name, context) => {
+  const handleGenerateAIDescription = async (type, id) => {
     try {
       setDescriptionLoading(true);
       
-      // Add database ID to the context
-      const contextWithDb = {
-        ...context,
-        database_id: selectedDb
-      };
-      
-      const response = await api.generateMetadataDescription(type, name, contextWithDb);
+      // Call the DatabaseViewSet endpoint with the correct parameters
+      const response = await api.generateMetadataDescription(selectedDb, type, id);
       
       if (response.data.description) {
         setEditDescription(response.data.description);
@@ -629,6 +624,11 @@ const DatabaseTester = () => {
                   onExtractMetadata={handleExtractMetadata}
                   onSaveDescription={handleSaveDescription}
                   onGenerateAIDescription={handleGenerateAIDescription}
+                  editDescription={editDescription}
+                  setEditDescription={setEditDescription}
+                  editingDescription={editingDescription}
+                  setEditingDescription={setEditingDescription}
+                  descriptionLoading={descriptionLoading}
                 />
               )}
               

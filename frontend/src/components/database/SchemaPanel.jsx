@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { 
   Box, 
   Typography, 
@@ -8,25 +8,26 @@ import {
   Button,
   CircularProgress,
   IconButton,
-  Alert,
   Tooltip
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
-import api from '../../api';
 
 const SchemaPanel = ({ 
   schemaData,
   metadataLoading, 
   onExtractMetadata,
   onSaveDescription,
-  onGenerateAIDescription
+  onGenerateAIDescription,
+  // New props for description state management
+  editDescription,
+  setEditDescription,
+  editingDescription,
+  setEditingDescription,
+  descriptionLoading
 }) => {
-  const [editingDescription, setEditingDescription] = useState(null);
-  const [editDescription, setEditDescription] = useState("");
-  const [descriptionLoading, setDescriptionLoading] = useState(false);
 
   // Handle description editing
   const handleEditDescription = (type, id, currentDescription) => {
@@ -41,10 +42,8 @@ const SchemaPanel = ({
   };
   
   // Handle AI description generation
-  const handleGenerateAIDescription = async (type, name, context) => {
-    setDescriptionLoading(true);
-    await onGenerateAIDescription(type, name, context);
-    setDescriptionLoading(false);
+  const handleGenerateAIDescription = async (type, id) => {
+    await onGenerateAIDescription(type, id);
   };
   
   // If no schema data, show placeholder
@@ -135,10 +134,7 @@ const SchemaPanel = ({
                           size="small"
                           variant="contained"
                           color="primary"
-                          onClick={() => handleGenerateAIDescription('table', table.table_name, {
-                            schema: table.schema_name,
-                            columns: table.columns.map(c => c.name).join(', ')
-                          })}
+                          onClick={() => handleGenerateAIDescription('table', table.id)}
                           disabled={descriptionLoading}
                           startIcon={<AutoAwesomeIcon />}
                         >
@@ -301,14 +297,7 @@ const SchemaPanel = ({
                               <IconButton
                                 size="small"
                                 color="primary"
-                                onClick={() => handleGenerateAIDescription('column', column.name, {
-                                  table: table.table_name,
-                                  schema: table.schema_name,
-                                  data_type: column.data_type,
-                                  is_nullable: column.is_nullable,
-                                  is_primary_key: column.is_primary_key,
-                                  is_foreign_key: column.is_foreign_key
-                                })}
+                                onClick={() => handleGenerateAIDescription('column', column.id)}
                                 disabled={descriptionLoading}
                               >
                                 <AutoAwesomeIcon fontSize="small" />
