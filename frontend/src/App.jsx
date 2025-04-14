@@ -51,11 +51,18 @@ function App() {
           }
         />
         <Route
-          path="/query"
+          path="/query/:sessionId"
           element={
             <ProtectedRoute>
               <Home />
             </ProtectedRoute>
+          }
+        />
+        {/* Add a default query route that redirects to sessions */}
+        <Route
+          path="/query"
+          element={
+            <Navigate to="/sessions" />
           }
         />
         <Route

@@ -278,6 +278,11 @@ class MetadataExtractor:
                         }
                     )
                     
+                    # Generate default description if none exists
+                    if not table_meta.description:
+                        table_meta.description = self.generate_table_description(table_meta)
+                        table_meta.save(update_fields=['description'])
+                    
                     # Track changes
                     if created:
                         self.changes['tables']['added'].append({
@@ -425,6 +430,11 @@ class MetadataExtractor:
                             'description': description
                         }
                     )
+                    
+                    # Generate default description if none exists
+                    if not column_meta.description:
+                        column_meta.description = self.generate_column_description(column_meta)
+                        column_meta.save(update_fields=['description'])
                     
                     # Track changes
                     if created:

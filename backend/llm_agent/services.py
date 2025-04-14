@@ -223,7 +223,6 @@ def nl_to_sql(natural_language_query, database_id):
     try:
         # Get the database to ensure it exists
         from databases.models import ClientDatabase
-        print("Running nl_to_sql")
         try:
             database = ClientDatabase.objects.get(id=database_id)
         except ClientDatabase.DoesNotExist:
@@ -276,8 +275,8 @@ Return your answer as a JSON object with the following format:
 }}
 You must return only the json and nothing else.
 """
-        
         result = llm_api(prompt)
+        print(f"Prompt: {prompt}\nResult: {result}")
         
         if not result.get("success"):
             return {"success": False, "error": result.get("error")}

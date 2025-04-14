@@ -11,7 +11,14 @@ class SessionListCreateView(APIView):
     permission_classes = [IsAuthenticated]
     
     def get(self, request):
-        sessions = Session.objects.filter(user=request.user)
+        # Filter by database_id if provided in query parameters
+        database_id = request.query_params.get('database_id')
+        
+        if database_id:
+            sessions = Session.objects.filter(user=request.user, database_id=database_id)
+        else:
+            sessions = Session.objects.filter(user=request.user)
+            
         serializer = SessionListSerializer(sessions, many=True)
         return Response(serializer.data)
     
