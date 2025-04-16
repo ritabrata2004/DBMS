@@ -12,8 +12,6 @@ from user.models import UserTokenUsage
 # load environment variables from .env file
 load_dotenv()
 
-input_factor = 10
-
 def llm_api(prompt, model="gpt-4o-mini", temperature=0.7, max_tokens=1000, user=None):
     """
     A unified function to interact with either OpenAI or Groq API based on the model name.
@@ -29,7 +27,8 @@ def llm_api(prompt, model="gpt-4o-mini", temperature=0.7, max_tokens=1000, user=
         dict: The response with success status and content/error
     """
     logging.info(f"LLM API request with model: {model}")
-    
+    input_factor = 10
+
     try:
         # Check for OpenAI API key
         openai_api_key = os.getenv("OPENAI_API_KEY") or getattr(settings, "OPENAI_API_KEY", None)
@@ -62,12 +61,14 @@ def llm_api(prompt, model="gpt-4o-mini", temperature=0.7, max_tokens=1000, user=
             
             # Extract the content from the response
             content = response.choices[0].message.content
+
+            print(f"OpenAI usage data: {response.usage}")
             
             # Record token usage if user is provided
             if user and response.usage:
                 UserTokenUsage.record_token_usage(
                     user=user,
-                    prompt_tokens=response.usage.prompt_tokens,
+                    prompt_tokens=response.usage.prompt_tokens/input_factor,
                     completion_tokens=response.usage.completion_tokens,
                     model=model,
                     query_text=prompt[:500]  # Store first 500 chars of the prompt
@@ -78,7 +79,7 @@ def llm_api(prompt, model="gpt-4o-mini", temperature=0.7, max_tokens=1000, user=
                 "success": True,
                 "content": content,
                 "token_usage": {
-                    "prompt_tokens": response.usage.prompt_tokens/input_factor if response.usage else 0,
+                    "prompt_tokens": response.usage.prompt_tokens if response.usage else 0,
                     "completion_tokens": response.usage.completion_tokens if response.usage else 0,
                     "total_tokens": response.usage.total_tokens if response.usage else 0,
                     "model": model
