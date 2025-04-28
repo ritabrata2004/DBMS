@@ -89,7 +89,11 @@ def llm_api(prompt, model="gpt-4o-mini", temperature=0.7, max_tokens=1000, user=
             # Use Groq API
             if not groq_api_key:
                 logging.error("Groq API key not found")
-                return {"success": False, "error": "Groq API key not found. Please set GROQ_API_KEY in your .env file."}
+                return {
+                    "success": False, 
+                    "error": "Groq API key not found. Please set GROQ_API_KEY in your .env file.",
+                    "error_type": "api_key_error"
+                }
             
             # Set up the Groq request
             headers = {
@@ -124,6 +128,9 @@ def llm_api(prompt, model="gpt-4o-mini", temperature=0.7, max_tokens=1000, user=
                 
                 # Extract the content from the response
                 content = result["choices"][0]["message"]["content"]
+
+                # split by </think>
+                content = content.split("</think>")[-1].strip()
                 
                 # Record token usage if user is provided and usage info is available
                 if user and "usage" in result:
@@ -152,11 +159,19 @@ def llm_api(prompt, model="gpt-4o-mini", temperature=0.7, max_tokens=1000, user=
                 }
             except requests.exceptions.RequestException as e:
                 logging.error(f"Error calling Groq API: {str(e)}")
-                return {"success": False, "error": f"Error calling Groq API: {str(e)}"}
+                return {
+                    "success": False, 
+                    "error": f"Error calling Groq API: {str(e)}",
+                    "error_type": "api_connection_error"
+                }
             
     except Exception as e:
         logging.exception(f"Unexpected error in llm_api: {str(e)}")
-        return {"success": False, "error": f"Unexpected error: {str(e)}"}
+        return {
+            "success": False, 
+            "error": f"Unexpected error: {str(e)}",
+            "error_type": "general_llm_error"
+        }
 
 def get_metadata_description(metadata_type, name, sample_data=None, user=None):
     """
@@ -249,7 +264,7 @@ def get_metadata_description(metadata_type, name, sample_data=None, user=None):
     prompt += "\n\nGenerate a single paragraph, professional description that would be helpful for a database user to understand this item's purpose and content."
     
     # Pass the user parameter to track token usage
-    result = llm_api(prompt, user=user)
+    result = llm_api(prompt=prompt, user=user, model="llama-3.1-70b-instant")
     if result.get("success"):
         return result.get("content", "")
     return "Failed to generate description due to API error."
@@ -275,7 +290,8 @@ def nl_to_sql(natural_language_query, database_id, user=None):
         except ClientDatabase.DoesNotExist:
             return {
                 "success": False,
-                "error": f"Database with ID {database_id} does not exist."
+                "error": f"Database with ID {database_id} does not exist.",
+                "error_type": "database_not_found"
             }
             
         # Build schema representation from database
@@ -285,7 +301,8 @@ def nl_to_sql(natural_language_query, database_id, user=None):
             # If metadata hasn't been extracted, inform the user
             return {
                 "success": False,
-                "error": "No schema information available for this database. Please extract metadata first by clicking 'Extract Schema' on the database details page."
+                "error": "No schema information available for this database. Please extract metadata first by clicking 'Extract Schema' on the database details page.",
+                "error_type": "metadata_not_extracted"
             }
         
         # Fetch similar examples using RAG to enhance in-context learning
@@ -304,6 +321,7 @@ Given the following database schema:
 ```
 
 """
+        prompt = prompt[:10000]  # Limit to 10000 characters for the prompt
         
         # Only include the RAG examples section if there are actually examples
         if rag_examples:
@@ -322,22 +340,29 @@ Return your answer as a JSON object with the following format:
 }}
 You must return only the json and nothing else.
 """
-        
         # Pass the user to the LLM API call for token tracking
-        result = llm_api(prompt, user=user)
+        result = llm_api(prompt, user=user, model="DeepSeek-R1-Distill-Llama-70B")
         
         if not result.get("success"):
-            return {"success": False, "error": result.get("error")}
+            return {
+                "success": False, 
+                "error": result.get("error"), 
+                "error_type": result.get("error_type", "llm_api_error")
+            }
         
         content = result.get("content", "")
         try:
-            # Try to extract JSON from the response
             if "```json" in content:
                 json_content = content.split("```json")[1].split("```")[0].strip()
-            elif "```" in content:
-                json_content = content.split("```")[1].strip()
+            elif "{" in content and "}" in content:
+                json_content = "{" + content.split("{", 1)[1].split("}", 1)[0] + "}"
             else:
-                json_content = content
+                json_content = content.strip()
+                json_content = json_content.split("SELECT")[-1].strip()
+                json_content = "SELECT " + json_content if json_content else ""
+                json_content = json_content.split("\n\n")[0].strip().split("```")[0].strip()
+                explanation = content.split("explanation:")[-1].strip().split("Explanation:")[-1].strip()
+                json_content = f"""{{"sql_query": "{json_content}", "explanation": "{explanation if explanation else "No explanation available"}"}}"""
                 
             response_data = json.loads(json_content)
             return {
@@ -346,16 +371,31 @@ You must return only the json and nothing else.
                 "explanation": response_data.get("explanation")
             }
         except json.JSONDecodeError:
-            # If JSON parsing fails, return the raw content
+            # If we couldn't parse the output as JSON, return a generation error
             return {
-                "success": True, 
-                "sql_query": content, 
-                "explanation": "Generated SQL query (no structured explanation available)"
+                "success": False, 
+                "error": "Failed to parse the generated SQL. The LLM output was in an unexpected format.",
+                "error_type": "generation_error"
             }
     
     except Exception as e:
         logging.exception(f"Error in nl_to_sql: {str(e)}")
-        return {"success": False, "error": str(e)}
+        error_message = str(e)
+        error_type = "general_error"
+        
+        # Try to classify the error
+        if "connection" in error_message.lower():
+            error_type = "connection_error"
+        elif "timeout" in error_message.lower():
+            error_type = "timeout_error"
+        elif "memory" in error_message.lower():
+            error_type = "memory_error"
+        
+        return {
+            "success": False, 
+            "error": error_message,
+            "error_type": error_type
+        }
 
 def build_schema_representation(database_id):
     """

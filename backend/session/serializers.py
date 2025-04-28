@@ -4,7 +4,7 @@ from .models import Session, Query
 class QuerySerializer(serializers.ModelSerializer):
     class Meta:
         model = Query
-        fields = ['id', 'prompt', 'response', 'created_at']
+        fields = ['id', 'prompt', 'response', 'created_at', 'success', 'error_type', 'error', 'generated_sql', 'explanation']
 
 
 class SessionSerializer(serializers.ModelSerializer):

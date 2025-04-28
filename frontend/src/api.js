@@ -26,8 +26,27 @@ api.getSession = (sessionId) => api.get(`/api/sessions/${sessionId}/`);
 api.updateSessionTitle = (sessionId, title) =>
   api.patch(`/api/sessions/${sessionId}/`, { title });
 api.deleteSession = (sessionId) => api.delete(`/api/sessions/${sessionId}/`);
-api.addQueryToSession = (sessionId, prompt, response) =>
-  api.post(`/api/sessions/${sessionId}/queries/`, { prompt, response });
+api.addQueryToSession = (
+  sessionId,
+  prompt,
+  response,
+  success = true,
+  errorType = null,
+  error = null,
+  generatedSql = null,
+  explanation = null
+) =>
+  api.post(`/api/sessions/${sessionId}/queries/`, {
+    prompt,
+    response,
+    success,
+    error_type: errorType,
+    error,
+    generated_sql: generatedSql,
+    explanation,
+  });
+api.updateQuery = (sessionId, queryId, updateData) =>
+  api.patch(`/api/sessions/${sessionId}/queries/${queryId}/`, updateData);
 api.deleteQueryFromSession = (sessionId, queryId) =>
   api.delete(`/api/sessions/${sessionId}/queries/${queryId}/`);
 
@@ -84,7 +103,7 @@ api.getERDiagram = (databaseId) =>
 
 // Token Usage
 api.getTokenUsage = (days, limit) => {
-  let url = '/api/user/token-usage/';
+  let url = "/api/user/token-usage/";
   const params = {};
   if (days) params.days = days;
   if (limit) params.limit = limit;

@@ -46,12 +46,18 @@ class DatabaseConnector:
     
     def execute_query(self, database_obj, query, params=None):
         """Execute a SQL query on the database and return results with column names"""
-        results = {"columns": [], "rows": [], "status": ""}
+        results = {"columns": [], "rows": [], "status": "", "execution_time": None}
+        start_time = datetime.now()
+        
         try:
             print(query)
             conn = self.create_connection(database_obj)
             with conn.cursor() as cursor:
                 cursor.execute(query, params)
+                
+                # Calculate execution time
+                execution_time = (datetime.now() - start_time).total_seconds()
+                results["execution_time"] = execution_time
                 
                 # Check if query returns data
                 if cursor.description:
@@ -85,8 +91,37 @@ class DatabaseConnector:
             results["success"] = True
             return results
         except Exception as e:
+            # Calculate execution time even for failed queries
+            execution_time = (datetime.now() - start_time).total_seconds()
+            results["execution_time"] = execution_time
+            
+            # Set default error information
             results["success"] = False
             results["status"] = f"Error: {str(e)}"
+            results["error_type"] = "execution_error"  # Default error type
+            
+            # Try to classify the error more specifically
+            error_message = str(e).lower()
+            
+            if "syntax error" in error_message:
+                results["error_type"] = "syntax_error"
+            elif "permission denied" in error_message or "access denied" in error_message:
+                results["error_type"] = "permission_error"
+            elif "does not exist" in error_message and "relation" in error_message:
+                results["error_type"] = "undefined_table"
+            elif "column" in error_message and "does not exist" in error_message:
+                results["error_type"] = "undefined_column"
+            elif "connection" in error_message:
+                results["error_type"] = "connection_error"
+            elif "timeout" in error_message:
+                results["error_type"] = "timeout_error"
+            elif "duplicate key" in error_message:
+                results["error_type"] = "duplicate_key_error"
+            elif "violates foreign key constraint" in error_message:
+                results["error_type"] = "foreign_key_violation"
+            elif "division by zero" in error_message:
+                results["error_type"] = "division_by_zero"
+            
             database_obj.connection_status = 'error'
             database_obj.save(update_fields=['connection_status'])
             return results

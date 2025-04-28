@@ -71,6 +71,13 @@ const PopupResult = ({
   const [copySuccess, setCopySuccess] = useState({ sql: false, json: false });
   const [highlightedSql, setHighlightedSql] = useState('');
   
+  // Console log results data for debugging
+  useEffect(() => {
+    if (results) {
+      console.log("PopupResult received results:", results);
+    }
+  }, [results]);
+  
   // Register SQL language for syntax highlighting
   useEffect(() => {
     hljs.registerLanguage('sql', sqlLanguage);
@@ -382,18 +389,46 @@ const PopupResult = ({
               borderColor: alpha(theme.palette.error.main, 0.3),
             }}>
               <Typography variant="h6" color="error" sx={{ mb: 1, fontWeight: 500 }}>
-                Error executing query
+                {results?.error_type ? `Error: ${results.error_type}` : "Error executing query"}
               </Typography>
               <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
-                {results?.status || 'An unknown error occurred'}
+                {results?.error || results?.status || 'An unknown error occurred'}
               </Typography>
+              
+              {/* Show additional context for specific error types */}
+              {results?.error_type === "SQL_EXECUTION_ERROR" && (
+                <Box sx={{ mt: 2, pt: 2, borderTop: `1px solid ${alpha(theme.palette.error.main, 0.3)}` }}>
+                  <Typography variant="body2" color="text.secondary">
+                    The SQL query was generated correctly but encountered an error during execution. 
+                    This could be due to incorrect table names, column references, or syntax that is 
+                    not supported by your database system.
+                  </Typography>
+                </Box>
+              )}
+              
+              {results?.error_type === "SQL_GENERATION_ERROR" && (
+                <Box sx={{ mt: 2, pt: 2, borderTop: `1px solid ${alpha(theme.palette.error.main, 0.3)}` }}>
+                  <Typography variant="body2" color="text.secondary">
+                    There was a problem generating the SQL query from your natural language question. 
+                    Try rephrasing your question with more specific details about tables and columns.
+                  </Typography>
+                </Box>
+              )}
             </Box>
           )}
         </TabPanel>
         
         {/* SQL Query Tab */}
         <TabPanel value={tabValue} index={1}>
-          <Box sx={{ mb: 2, display: 'flex', justifyContent: 'flex-end' }}>
+          <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Box>
+              {/* Display error type in SQL tab if there was an error */}
+              {results && !results.success && (
+                <Typography variant="body2" color="error" sx={{ fontWeight: 500 }}>
+                  {results.error_type || "Error generating/executing SQL"}
+                </Typography>
+              )}
+            </Box>
             <Tooltip title="Copy SQL">
               <IconButton 
                 onClick={() => handleCopy(sql, 'sql')}
@@ -416,7 +451,9 @@ const PopupResult = ({
               borderRadius: 1,
               bgcolor: alpha(theme.palette.background.default, 0.5),
               border: '1px solid',
-              borderColor: alpha(theme.palette.divider, 0.5),
+              borderColor: results && !results.success 
+                ? alpha(theme.palette.error.main, 0.3)
+                : alpha(theme.palette.divider, 0.5),
               fontFamily: 'monospace',
               fontSize: '0.9rem',
               whiteSpace: 'pre-wrap',
@@ -429,6 +466,72 @@ const PopupResult = ({
               className="hljs"
             />
           </Paper>
+          
+          {/* Display error message if available */}
+          {results && !results.success && results.error && (
+            <Box sx={{ mt: 2 }}>
+              <Typography variant="subtitle1" fontWeight={600} sx={{ 
+                mb: 1, 
+                color: theme.palette.error.main,
+                borderBottom: '1px solid',
+                borderColor: alpha(theme.palette.error.main, 0.3),
+                pb: 0.5
+              }}>
+                Error Details
+              </Typography>
+              <Paper 
+                elevation={0}
+                sx={{
+                  p: 2,
+                  borderRadius: 1,
+                  bgcolor: alpha(theme.palette.error.main, 0.05),
+                  border: '1px solid',
+                  borderColor: alpha(theme.palette.error.main, 0.2),
+                  fontSize: '0.95rem',
+                  whiteSpace: 'pre-wrap',
+                  overflow: 'auto',
+                  maxHeight: '20vh'
+                }}
+              >
+                <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+                  {results.error}
+                </Typography>
+              </Paper>
+            </Box>
+          )}
+          
+          {/* Display explanation if available */}
+          {results?.explanation && (
+            <Box sx={{ mt: 3 }}>
+              <Typography variant="subtitle1" fontWeight={600} sx={{ 
+                mb: 1.5, 
+                color: theme.palette.primary.main,
+                borderBottom: '1px solid',
+                borderColor: alpha(theme.palette.divider, 0.5),
+                pb: 0.5
+              }}>
+                Explanation
+              </Typography>
+              <Paper 
+                elevation={0}
+                sx={{
+                  p: 2,
+                  borderRadius: 1,
+                  bgcolor: alpha(theme.palette.info.main, 0.05),
+                  border: '1px solid',
+                  borderColor: alpha(theme.palette.info.main, 0.2),
+                  fontSize: '0.95rem',
+                  whiteSpace: 'pre-wrap',
+                  overflow: 'auto',
+                  maxHeight: '30vh'
+                }}
+              >
+                <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+                  {results.explanation}
+                </Typography>
+              </Paper>
+            </Box>
+          )}
         </TabPanel>
       </DialogContent>
       

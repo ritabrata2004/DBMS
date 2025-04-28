@@ -15,7 +15,10 @@ def generate_sql_from_nl(request):
     """
     if 'query' not in request.data or 'database_id' not in request.data:
         return Response(
-            {'error': 'Both query and database_id are required'},
+            {
+                'error': 'Both query and database_id are required',
+                'error_type': 'missing_parameters'
+            },
             status=status.HTTP_400_BAD_REQUEST
         )
 
@@ -27,10 +30,13 @@ def generate_sql_from_nl(request):
     
     if not result.get('success'):
         return Response(
-            {'error': result.get('error', 'Unknown error generating SQL')},
+            {
+                'error': result.get('error', 'Unknown error generating SQL'),
+                'error_type': result.get('error_type', 'generation_error')
+            },
             status=status.HTTP_400_BAD_REQUEST
         )
-    
+    print(result)
     return Response({
         'sql_query': result.get('sql_query', ''),
         'explanation': result.get('explanation', '')

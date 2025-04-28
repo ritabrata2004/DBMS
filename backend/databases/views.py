@@ -55,6 +55,12 @@ class DatabaseViewSet(viewsets.ModelViewSet):
             query_serializer.validated_data.get('params')
         )
         
+        # Ensure that error_type is included in the response
+        if not result.get("success", True):
+            if "error_type" not in result:
+                # Set a default error type if none is provided by the connector
+                result["error_type"] = "execution_error"
+                
         result_serializer = QueryResultSerializer(data=result)
         result_serializer.is_valid(raise_exception=True)
         return Response(result_serializer.data)

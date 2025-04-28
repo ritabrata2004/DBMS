@@ -38,6 +38,7 @@ function Home() {
     const [queryResult, setQueryResult] = useState(null);
     const [currentNaturalQuery, setCurrentNaturalQuery] = useState(""); 
     const [historicQueryData, setHistoricQueryData] = useState(null); 
+    const [currentQueryId, setCurrentQueryId] = useState(null); // To track the current query being processed
     const messagesEndRef = useRef(null);
     const messagesContainerRef = useRef(null);
     
@@ -111,6 +112,10 @@ function Home() {
             
             // If there are queries in this session, set the most recent response
             const queries = sessionResponse.data.queries;
+            
+            // Console log all historical queries
+            console.log("Historical queries loaded:", queries);
+            
             if (queries && queries.length > 0) {
                 setResponse(queries[queries.length - 1].response);
             } else {
@@ -150,6 +155,7 @@ function Home() {
             
             // Access the correct field name 'sql_query' instead of 'sql'
             let generatedSqlQuery = sqlGenResponse.data.sql_query;
+            let explanation = sqlGenResponse.data.explanation || "";
             
             // Clean SQL query by removing markdown code blocks if present
             generatedSqlQuery = cleanSqlQuery(generatedSqlQuery);
@@ -163,6 +169,32 @@ function Home() {
             // Store the natural language query for execution
             setCurrentNaturalQuery(currentQuery);
             
+            // Create a temporary response with just the SQL (will be updated after execution)
+            const tempResponse = `
+**Generated SQL:**
+\`\`\`sql
+${generatedSqlQuery}
+\`\`\`
+
+${explanation ? `**Explanation:**\n${explanation}` : ''}
+`;
+            
+            // Save the query with the initial generated SQL but mark it as not executed yet
+            // using the new fields in the Query model
+            const queryResponse = await api.addQueryToSession(
+                currentSessionId, 
+                currentQuery, 
+                tempResponse, 
+                true, // success so far (SQL generation succeeded)
+                null, // no error type yet
+                null, // no error yet
+                generatedSqlQuery, // store the generated SQL
+                explanation // store the explanation
+            );
+            
+            // Store the ID of the query so we can update it after execution
+            setCurrentQueryId(queryResponse.data.id);
+            
             // Clear the input field
             setQuery("");
         } catch (error) {
@@ -170,6 +202,7 @@ function Home() {
             
             // Create an error message that's user-friendly
             let errorMessage = "An error occurred while generating the SQL query.";
+            let errorType = "SQL_GENERATION_ERROR";
             
             if (error.response) {
                 if (error.response.data && error.response.data.detail) {
@@ -183,8 +216,18 @@ function Home() {
                 errorMessage = `Error: ${error.message}`;
             }
             
-            // Save the error message as a response
-            await api.addQueryToSession(currentSessionId, query, errorMessage);
+            // Save the error message as a response using the new fields
+            await api.addQueryToSession(
+                currentSessionId, 
+                query, 
+                errorMessage, 
+                false, // SQL generation failed
+                errorType,
+                errorMessage,
+                null, // no SQL was generated
+                null  // no explanation available
+            );
+            
             setResponse(errorMessage);
             
             // Reload the session to get the updated queries
@@ -226,10 +269,31 @@ ${generatedSql}
 **Results:**
 ${formatQueryResults(executionResponse.data)}
 `;
-            
-            // Save the query and response to the current session
-            // Use the stored natural language query instead of the empty query state
-            await api.addQueryToSession(currentSessionId, currentNaturalQuery, formattedResponse);
+
+            if (currentQueryId) {
+                // Update the existing query with the execution results
+                await api.updateQuery(currentSessionId, currentQueryId, {
+                    response: formattedResponse, 
+                    success: executionResponse.data.success,
+                    error_type: executionResponse.data.success ? null : "SQL_EXECUTION_ERROR",
+                    error: executionResponse.data.success ? null : executionResponse.data.status,
+                    generated_sql: generatedSql
+                });
+                
+                // Reset currentQueryId as we've completed the process
+                setCurrentQueryId(null);
+            } else {
+                // If no currentQueryId exists, create a new query with all fields
+                await api.addQueryToSession(
+                    currentSessionId, 
+                    currentNaturalQuery, 
+                    formattedResponse,
+                    executionResponse.data.success,
+                    executionResponse.data.success ? null : "SQL_EXECUTION_ERROR",
+                    executionResponse.data.success ? null : executionResponse.data.status,
+                    generatedSql
+                );
+            }
             
             // Update the local state to show the response
             setResponse(formattedResponse);
@@ -247,22 +311,63 @@ ${formatQueryResults(executionResponse.data)}
             
             // Create an error message that's user-friendly
             let errorMessage = "An error occurred while executing the SQL query.";
+            let errorType = "SQL_EXECUTION_ERROR";
+            let errorDetail = error.message || "Unknown error";
             
             if (error.response) {
                 if (error.response.data && error.response.data.detail) {
-                    errorMessage = `Error: ${error.response.data.detail}`;
+                    errorDetail = error.response.data.detail;
+                    errorMessage = `Error: ${errorDetail}`;
                 } else if (error.response.data && error.response.data.error) {
-                    errorMessage = `Error: ${error.response.data.error}`;
+                    errorDetail = error.response.data.error;
+                    errorMessage = `Error: ${errorDetail}`;
                 } else {
-                    errorMessage = `Error: ${error.response.status} - ${error.response.statusText}`;
+                    errorDetail = `${error.response.status} - ${error.response.statusText}`;
+                    errorMessage = `Error: ${errorDetail}`;
                 }
-            } else if (error.message) {
-                errorMessage = `Error: ${error.message}`;
             }
             
-            // Save the error message as a response
-            await api.addQueryToSession(currentSessionId, query, errorMessage);
-            setResponse(errorMessage);
+            // Format the error response
+            const formattedResponse = `
+**Generated SQL:**
+\`\`\`
+${generatedSql}
+\`\`\`
+
+**Error:**
+${errorMessage}
+`;
+            
+            if (currentQueryId) {
+                // Update the existing query with the error information
+                await api.updateQuery(currentSessionId, currentQueryId, {
+                    response: formattedResponse,
+                    success: false,
+                    error_type: errorType,
+                    error: errorDetail,
+                    generated_sql: generatedSql
+                });
+                
+                // Reset currentQueryId since we've completed the process
+                setCurrentQueryId(null);
+            } else {
+                // If no currentQueryId exists, create a new query with all fields
+                await api.addQueryToSession(
+                    currentSessionId,
+                    currentNaturalQuery || query,
+                    formattedResponse,
+                    false,
+                    errorType,
+                    errorDetail,
+                    generatedSql
+                );
+            }
+            
+            // Update the local state to show the error
+            setResponse(formattedResponse);
+            
+            // Reset the SQL controls
+            setShowSqlControls(false);
             
             // Reload the session to get the updated queries
             loadSession(currentSessionId);
@@ -475,13 +580,28 @@ ${formatQueryResults(executionResponse.data)}
     
     // Show a previous query's results in the popup
     const showPreviousQueryResults = (item) => {
+        console.log("Showing previous query results:", item);
+        
+        // Parse response text from markdown to extract SQL and results
         const { sql, results } = parseResultsFromMarkdown(item.response);
+        
+        // Create a comprehensive result object that includes all fields we need
+        const enhancedResults = {
+            ...(results || {}),
+            // Include success status from the query object
+            success: item.success,
+            // Include error information if present
+            error_type: item.error_type,
+            error: item.error,
+            // Include generated SQL and explanation
+            explanation: item.explanation
+        };
         
         // Set up the data for the popup
         setHistoricQueryData({
-            sql,
-            results,
-            naturalQuery: item.prompt  // Make sure this contains the original natural language query
+            sql: item.generated_sql || sql, // Prefer the stored generated_sql if available
+            results: enhancedResults,
+            naturalQuery: item.prompt  // The original natural language query
         });
         
         // Show the popup

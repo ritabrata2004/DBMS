@@ -86,6 +86,17 @@ const SessionMessages = memo(({
     const resultSummary = useMemo(() => generateResultsSummary(item.response), [item.response]);
     const { previewText } = resultSummary;
 
+    // Determine message appearance based on success status
+    const messageStyle = item.success ? {
+      backgroundImage: 'linear-gradient(135deg, rgba(100, 95, 190, 0.05) 0%, rgba(80, 110, 200, 0.15) 100%)',
+      border: '1px solid',
+      borderColor: alpha(theme.palette.divider, 0.4),
+    } : {
+      backgroundImage: 'linear-gradient(135deg, rgba(250, 100, 100, 0.05) 0%, rgba(250, 100, 100, 0.15) 100%)',
+      border: '1px solid',
+      borderColor: alpha(theme.palette.error.main, 0.4),
+    };
+
     return (
       <Box sx={{ width: '100%', my: 2 }}>
         {/* User message */}
@@ -133,7 +144,7 @@ const SessionMessages = memo(({
           <Avatar 
             sx={{ 
               mr: 1, 
-              bgcolor: theme.palette.secondary.dark,
+              bgcolor: item.success ? theme.palette.secondary.dark : theme.palette.error.dark,
               boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
             }} 
             alt="AI"
@@ -143,7 +154,7 @@ const SessionMessages = memo(({
           <Box sx={{ maxWidth: { xs: '85%', md: '75%' } }}>
             <Box sx={{ display: 'flex', mb: 0.5, ml: 1 }}>
               <Typography variant="caption" sx={{ color: alpha(theme.palette.text.secondary, 0.8) }}>
-                AI Assistant
+                {item.success ? "AI Assistant" : `Error: ${item.error_type || "Processing Error"}`}
               </Typography>
             </Box>
             <Paper 
@@ -151,21 +162,23 @@ const SessionMessages = memo(({
               sx={{
                 p: 2,
                 color: theme.palette.text.primary,
-                backgroundImage: 'linear-gradient(135deg, rgba(100, 95, 190, 0.05) 0%, rgba(80, 110, 200, 0.15) 100%)',
+                ...messageStyle,
                 backdropFilter: 'blur(10px)',
                 borderRadius: '16px 16px 16px 4px',
-                border: '1px solid',
-                borderColor: alpha(theme.palette.divider, 0.4),
                 overflowWrap: 'break-word',
                 wordWrap: 'break-word',
                 boxShadow: '0 2px 12px rgba(0,0,0,0.1)',
                 cursor: 'pointer',
                 transition: 'all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)',
                 '&:hover': {
-                  backgroundImage: 'linear-gradient(135deg, rgba(100, 95, 190, 0.1) 0%, rgba(80, 110, 200, 0.2) 100%)',
+                  backgroundImage: item.success 
+                    ? 'linear-gradient(135deg, rgba(100, 95, 190, 0.1) 0%, rgba(80, 110, 200, 0.2) 100%)'
+                    : 'linear-gradient(135deg, rgba(250, 100, 100, 0.1) 0%, rgba(250, 100, 100, 0.2) 100%)',
                   boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
                   transform: 'translateY(-2px)',
-                  borderColor: alpha(theme.palette.primary.main, 0.2),
+                  borderColor: item.success
+                    ? alpha(theme.palette.primary.main, 0.2)
+                    : alpha(theme.palette.error.main, 0.2),
                 }
               }}
             >

@@ -50,7 +50,7 @@ class SessionDetailView(APIView):
             serializer = SessionSerializer(session)
             return Response(serializer.data)
         except Session.DoesNotExist:
-            return Response({"detail": "Session not found"}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"detail": "Session not found", "error_type": "not_found"}, status=status.HTTP_404_NOT_FOUND)
     
     def patch(self, request, pk):
         try:
@@ -61,7 +61,7 @@ class SessionDetailView(APIView):
             serializer = SessionSerializer(session)
             return Response(serializer.data)
         except Session.DoesNotExist:
-            return Response({"detail": "Session not found"}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"detail": "Session not found", "error_type": "not_found"}, status=status.HTTP_404_NOT_FOUND)
     
     def delete(self, request, pk):
         try:
@@ -69,7 +69,7 @@ class SessionDetailView(APIView):
             session.delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
         except Session.DoesNotExist:
-            return Response({"detail": "Session not found"}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"detail": "Session not found", "error_type": "not_found"}, status=status.HTTP_404_NOT_FOUND)
 
 
 class QueryCreateView(APIView):
@@ -84,7 +84,12 @@ class QueryCreateView(APIView):
             
             query_data = {
                 'prompt': request.data.get('prompt', ''),
-                'response': request.data.get('response', '')
+                'response': request.data.get('response', ''),
+                'success': request.data.get('success', True),
+                'error_type': request.data.get('error_type'),
+                'error': request.data.get('error'),
+                'generated_sql': request.data.get('generated_sql'),
+                'explanation': request.data.get('explanation')
             }
             
             query = Query.objects.create(
@@ -100,6 +105,52 @@ class QueryCreateView(APIView):
 
 class QueryDetailView(APIView):
     permission_classes = [IsAuthenticated]
+    
+    def get(self, request, session_id, query_id):
+        try:
+            # First check if the session belongs to the user
+            session = Session.objects.get(pk=session_id, user=request.user)
+            
+            try:
+                # Find the query within this session
+                query = Query.objects.get(pk=query_id, session=session)
+                serializer = QuerySerializer(query)
+                return Response(serializer.data)
+            except Query.DoesNotExist:
+                return Response({"detail": "Query not found"}, status=status.HTTP_404_NOT_FOUND)
+        except Session.DoesNotExist:
+            return Response({"detail": "Session not found"}, status=status.HTTP_404_NOT_FOUND)
+    
+    def patch(self, request, session_id, query_id):
+        try:
+            # First check if the session belongs to the user
+            session = Session.objects.get(pk=session_id, user=request.user)
+            
+            try:
+                # Find the query within this session
+                query = Query.objects.get(pk=query_id, session=session)
+                
+                # Update the fields that are provided in the request
+                if 'response' in request.data:
+                    query.response = request.data['response']
+                if 'success' in request.data:
+                    query.success = request.data['success']
+                if 'error_type' in request.data:
+                    query.error_type = request.data['error_type']
+                if 'error' in request.data:
+                    query.error = request.data['error']
+                if 'generated_sql' in request.data:
+                    query.generated_sql = request.data['generated_sql']
+                if 'explanation' in request.data:
+                    query.explanation = request.data['explanation']
+                
+                query.save()
+                serializer = QuerySerializer(query)
+                return Response(serializer.data)
+            except Query.DoesNotExist:
+                return Response({"detail": "Query not found"}, status=status.HTTP_404_NOT_FOUND)
+        except Session.DoesNotExist:
+            return Response({"detail": "Session not found"}, status=status.HTTP_404_NOT_FOUND)
     
     def delete(self, request, session_id, query_id):
         try:
